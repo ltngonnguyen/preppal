@@ -1,4 +1,4 @@
-# PrepPal - Developer Notes 
+# PrepPal - Developer Notes
 
 ## Week 1
 
@@ -116,4 +116,4 @@ Offline Stockpile Management: Implementing robust local data storage for the sto
 HCMC-Specific Alert Simulation with Interactive Guidance: Developing the UI for displaying detailed, multi-stage simulated alerts tailored to HCMC scenarios (e.g., a flood progressing), with actionable guidance steps that users can interact with. This tests UI complexity and state management.
 Begin coding the chosen feature prototype.
 Start drafting the "Introduction" and "Feature Prototype" chapters for the Week 10 preliminary report.
-Revise the "Literature Review" and "Design" chapters based on peer review feedback (once received) and my own evolving understanding.
+Revise the "Literature Review" and "Design" chapters based on peer review feedback (once received) and my own evolving understanding
