@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'tabs/dashboard_tab.dart';
-// StockpileTab and GuidesTab are no longer direct bottom navigation items.
-// They are accessed via DashboardTab or PreparednessHubTab.
 import 'tabs/alerts_tab.dart';
 import 'tabs/community_tab.dart';
 import 'tabs/profile_tab.dart';
+import 'settings_screen.dart'; // Import the SettingsScreen
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+ const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -49,11 +48,14 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(_selectedIndex == 0 ? 'PrepPal' : _tabTitles[_selectedIndex]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined), // Settings/Profile icon.
+            icon: const Icon(Icons.settings), // Changed to filled settings icon
             onPressed: () {
-              _onItemTapped(3); // Navigate to ProfileTab (index 3).
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
             },
-            tooltip: 'Settings / Profile',
+            tooltip: 'Settings',
           ),
         ],
       ),

@@ -28,16 +28,18 @@ class PreparednessHubTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar for this tab is typically managed by the parent Scaffold (e.g., HomeScreen),
-      // or can be defined here if a unique AppBar is needed for this specific tab.
+      appBar: AppBar(
+        title: const Text('Preparedness Hub'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          Text(
-            'Preparedness Hub',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
           const SizedBox(height: 8),
           Text(
             'Explore HCMC-specific risks, manage your emergency kits, and develop preparedness plans.',

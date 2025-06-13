@@ -84,8 +84,6 @@ class DashboardTab extends StatelessWidget {
               ),
               onPressed: () {
                 // Navigates to the Alerts tab.
-                // Assumes BottomNavigationBar.onTap can be called.
-                // Consider using a state management solution (Provider, Riverpod) for robust tab switching.
                 final ScaffoldMessengerState scaffoldMessenger = ScaffoldMessenger.of(context);
                 final Widget? bottomNavWidget = Scaffold.of(context).widget.bottomNavigationBar;
                 if (bottomNavWidget is BottomNavigationBar && bottomNavWidget.onTap != null) {
@@ -115,7 +113,7 @@ class DashboardTab extends StatelessWidget {
                   context,
                   icon: Icons.shield_outlined,
                   title: 'Preparedness Hub',
-                  subtitle: '(HCMC Risks, Kits, Plans)',
+                  subtitle: '',
                   onPressed: () {
                     Navigator.push(
                         context,
@@ -127,7 +125,7 @@ class DashboardTab extends StatelessWidget {
                   context,
                   icon: Icons.inventory_2_outlined,
                   title: 'Stockpile Management',
-                  subtitle: '(View/Edit Items)',
+                  subtitle: '',
                   onPressed: () {
                     Navigator.push(
                        context,
@@ -139,7 +137,7 @@ class DashboardTab extends StatelessWidget {
                   context,
                   icon: Icons.school_outlined,
                   title: 'Skill Building',
-                  subtitle: '(Resources)',
+                  subtitle: '',
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Navigate to Skill Building - TBD')),
@@ -150,7 +148,7 @@ class DashboardTab extends StatelessWidget {
                   context,
                   icon: Icons.self_improvement_outlined,
                   title: 'Climate Anxiety Support',
-                  subtitle: '(Resources)',
+                  subtitle: '',
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -158,26 +156,6 @@ class DashboardTab extends StatelessWidget {
                     );
                   },
                 ),
-                _buildDashboardButton(
-                  context,
-                  icon: Icons.groups_outlined,
-                  title: 'Community Hub',
-                  subtitle: '(HCMC Services)',
-                  onPressed: () {
-                     final ScaffoldMessengerState scaffoldMessenger = ScaffoldMessenger.of(context);
-                     final Widget? bottomNavWidget = Scaffold.of(context).widget.bottomNavigationBar;
-                     if (bottomNavWidget is BottomNavigationBar && bottomNavWidget.onTap != null) {
-                         bottomNavWidget.onTap!(2); // Index 2 for CommunityTab.
-                     } else {
-                         // Fallback if direct tap is not possible.
-                         scaffoldMessenger.showSnackBar(
-                             const SnackBar(content: Text('Could not navigate to Community Hub. Try bottom navigation.')),
-                         );
-                     }
-                  },
-               ),
-               // GridView might require an even number of items or specific aspect ratio
-               // to fill space correctly, depending on crossAxisCount.
              ],
            ),
          ],
