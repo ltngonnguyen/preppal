@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io'; // Added for File
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart' as firebase_storage; // Added for Firebase Storage
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import '../models/user_profile.dart';
 import '../models/user_preferences.dart';
 
@@ -36,17 +36,14 @@ class ProfileService {
 
     return _userProfileRef().snapshots().map((snapshot) {
       if (!snapshot.exists) {
-        // Potentially create a default profile here if needed upon first read after registration
-        // For now, we'll return null and let the UI/Provider handle creating it on demand.
-        // Or, we can create it:
         final defaultProfile = UserProfile(
           id: user.uid,
           email: user.email ?? '',
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
         );
-        // _userProfileRef().set(defaultProfile); // Uncomment to auto-create
-        return defaultProfile; // or return null if creation is handled elsewhere
+        // _userProfileRef().set(defaultProfile);
+        return defaultProfile; 
       }
       return snapshot.data();
     });
@@ -83,8 +80,6 @@ class ProfileService {
         print('[ProfileService] Profile updated with new image URL.');
       } catch (e) {
         print('[ProfileService] Error uploading profile image to Firebase Storage: $e');
-        // For now, we'll proceed to update Firestore with the profile data (which might have the old URL or no URL)
-        // Consider if you want to rethrow or prevent Firestore update on storage failure.
       }
     } else {
       print('[ProfileService] No imageFile provided to updateUserProfile.');

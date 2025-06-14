@@ -43,6 +43,12 @@ dependencies:
   image_picker: ^1.0.7 # For picking images
   firebase_storage: ^11.7.7
   firebase_app_check: ^0.2.1+16 # For Firebase App Check
+  sqflite: any # For SQLite database
+  path_provider: any # For finding paths
+  path: any # For joining paths (often used with sqflite)
+  connectivity_plus: any # For checking internet connectivity
+  confetti: ^0.7.0 # For confetti animations
+  audioplayers: ^6.0.0 # For playing audio
 
 dev_dependencies:
   flutter_test:
@@ -67,7 +73,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
+  assets:
+    - assets/sounds/ 
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

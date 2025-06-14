@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StockpileItem {
-  final String? id; // Firestore document ID.
+  final String? id; // Firestore document ID / SQLite primary key.
   final String name;
   int quantity;
   final String category;
@@ -9,8 +9,12 @@ class StockpileItem {
   DateTime? expiryDate;
   String? notes;
   String? reminderPreference; // Stores user's reminder choice (e.g., "1_week").
-  final DateTime addedDate;
+  final DateTime addedDate; // Serves as createdAt
+  DateTime? updatedAt; // For sync purposes
   final String userId;
+  double? unitVolumeLiters; // For water containers: Liters per bottle/can
+  double? totalDaysOfSupplyPerItem; // User-defined or calculated total days of supply
+  String? syncStatus; // e.g., 'synced', 'pending_sync'
 
   StockpileItem({
     this.id,
@@ -22,38 +26,69 @@ class StockpileItem {
     this.notes,
     this.reminderPreference,
     required this.addedDate,
+    this.updatedAt,
     required this.userId,
+    this.unitVolumeLiters,
+    this.totalDaysOfSupplyPerItem,
+    this.syncStatus,
   });
 
-  // Creates a StockpileItem instance from a Firestore document snapshot.
-  factory StockpileItem.fromFirestore(DocumentSnapshot<Map<String, dynamic>> snapshot, String id) {
-    final data = snapshot.data();
+  // Creates a StockpileItem instance from a Map (e.g., from Firestore or SQLite).
+  factory StockpileItem.fromMap(Map<String, dynamic> map, [String? idFromDocument]) {
     return StockpileItem(
-      id: id,
-      name: data?['name'] ?? '',
-      quantity: data?['quantity'] ?? 0,
-      category: data?['category'] ?? 'Uncategorized',
-      unit: data?['unit'],
-      expiryDate: (data?['expiryDate'] as Timestamp?)?.toDate(),
-      notes: data?['notes'],
-      reminderPreference: data?['reminderPreference'],
-      addedDate: (data?['addedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      userId: data?['userId'] ?? '',
+      id: idFromDocument ?? map['id'] as String?,
+      name: map['name'] as String? ?? '',
+      quantity: map['quantity'] as int? ?? 0,
+      category: map['category'] as String? ?? 'Uncategorized',
+      unit: map['unit'] as String?,
+      expiryDate: map['expiryDate'] == null
+          ? null
+          : (map['expiryDate'] is Timestamp
+              ? (map['expiryDate'] as Timestamp).toDate()
+              : DateTime.tryParse(map['expiryDate'] as String? ?? '')),
+      notes: map['notes'] as String?,
+      reminderPreference: map['reminderPreference'] as String?,
+      addedDate: map['addedDate'] == null
+          ? DateTime.now()
+          : (map['addedDate'] is Timestamp
+              ? (map['addedDate'] as Timestamp).toDate()
+              : DateTime.tryParse(map['addedDate'] as String? ?? '') ?? DateTime.now()),
+      updatedAt: map['updatedAt'] == null
+          ? null
+          : (map['updatedAt'] is Timestamp
+              ? (map['updatedAt'] as Timestamp).toDate()
+              : DateTime.tryParse(map['updatedAt'] as String? ?? '')),
+      userId: map['userId'] as String? ?? '',
+      unitVolumeLiters: (map['unitVolumeLiters'] as num?)?.toDouble(),
+      totalDaysOfSupplyPerItem: (map['totalDaysOfSupplyPerItem'] as num?)?.toDouble(),
+      syncStatus: map['syncStatus'] as String?,
     );
   }
 
-  // Converts this StockpileItem instance to a Map for Firestore storage.
-  Map<String, dynamic> toJson() {
+  // Converts this StockpileItem instance to a Map for storage (Firestore/SQLite).
+  Map<String, dynamic> toMap({bool forFirestore = true}) {
     return {
+      // id is typically not part of the map for Firestore auto-ID, but useful for SQLite
+      if (!forFirestore && id != null) 'id': id,
       'name': name,
       'quantity': quantity,
       'category': category,
       'unit': unit,
-      'expiryDate': expiryDate != null ? Timestamp.fromDate(expiryDate!) : null,
+      'expiryDate': forFirestore
+          ? (expiryDate != null ? Timestamp.fromDate(expiryDate!) : null)
+          : expiryDate?.toIso8601String(),
       'notes': notes,
       'reminderPreference': reminderPreference,
-      'addedDate': Timestamp.fromDate(addedDate),
+      'addedDate': forFirestore
+          ? Timestamp.fromDate(addedDate)
+          : addedDate.toIso8601String(),
+      'updatedAt': updatedAt == null
+          ? null
+          : (forFirestore ? Timestamp.fromDate(updatedAt!) : updatedAt!.toIso8601String()),
       'userId': userId,
+      'unitVolumeLiters': unitVolumeLiters,
+      'totalDaysOfSupplyPerItem': totalDaysOfSupplyPerItem,
+      'syncStatus': syncStatus,
     };
   }
 
@@ -70,7 +105,15 @@ class StockpileItem {
     String? reminderPreference,
     bool clearNotes = false,
     DateTime? addedDate,
+    DateTime? updatedAt,
+    bool clearUpdatedAt = false,
     String? userId,
+    double? unitVolumeLiters,
+    bool clearUnitVolumeLiters = false,
+    double? totalDaysOfSupplyPerItem,
+    bool clearTotalDaysOfSupplyPerItem = false,
+    String? syncStatus,
+    bool clearSyncStatus = false,
   }) {
     return StockpileItem(
       id: id ?? this.id,
@@ -82,7 +125,11 @@ class StockpileItem {
       notes: clearNotes ? null : (notes ?? this.notes),
       reminderPreference: reminderPreference ?? this.reminderPreference,
       addedDate: addedDate ?? this.addedDate,
+      updatedAt: clearUpdatedAt ? null : (updatedAt ?? this.updatedAt),
       userId: userId ?? this.userId,
+      unitVolumeLiters: clearUnitVolumeLiters ? null : (unitVolumeLiters ?? this.unitVolumeLiters),
+      totalDaysOfSupplyPerItem: clearTotalDaysOfSupplyPerItem ? null : (totalDaysOfSupplyPerItem ?? this.totalDaysOfSupplyPerItem),
+      syncStatus: clearSyncStatus ? null : (syncStatus ?? this.syncStatus),
     );
   }
 }

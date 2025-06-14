@@ -15,8 +15,8 @@ class FirestoreService {
       throw Exception("User not logged in. Cannot access stockpile.");
     }
     return _db.collection('users').doc(_userId).collection('stockpileItems').withConverter<StockpileItem>(
-          fromFirestore: (snapshots, _) => StockpileItem.fromFirestore(snapshots, snapshots.id),
-          toFirestore: (item, _) => item.toJson(),
+          fromFirestore: (snapshot, _) => StockpileItem.fromMap(snapshot.data()!, snapshot.id),
+          toFirestore: (item, _) => item.toMap(),
         );
   }
 
@@ -29,18 +29,27 @@ class FirestoreService {
         .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
   }
 
-  // Add a new stockpile item
+  // Add or update a stockpile item. If item.id is null, Firestore generates an ID.
+  // If item.id is provided, it will set the document with that ID (upsert).
   Future<void> addStockpileItem(StockpileItem item) async {
     if (_userId == null) throw Exception("User not logged in.");
-    // Ensure the item's userId is set correctly
+    
     final itemWithUserId = item.copyWith(userId: _userId);
-    await _stockpileCollection().add(itemWithUserId);
+
+    if (itemWithUserId.id != null && itemWithUserId.id!.isNotEmpty) {
+      // If ID is provided, use it to set the document.
+      // This is useful for syncing items that already have an ID from the local DB.
+      await _stockpileCollection().doc(itemWithUserId.id).set(itemWithUserId);
+    } else {
+      // If no ID, let Firestore generate one.
+      await _stockpileCollection().add(itemWithUserId);
+    }
   }
 
   // Update an existing stockpile item
   Future<void> updateStockpileItem(StockpileItem item) async {
     if (_userId == null || item.id == null) throw Exception("User not logged in or item ID missing.");
-    await _stockpileCollection().doc(item.id).update(item.toJson());
+    await _stockpileCollection().doc(item.id).update(item.toMap());
   }
 
   // Delete a stockpile item
