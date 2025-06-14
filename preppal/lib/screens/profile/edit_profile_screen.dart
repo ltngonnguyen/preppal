@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:preppal/models/user_profile.dart';
 import 'package:preppal/providers/profile_providers.dart';
-import 'package:preppal/services/profile_service.dart'; 
+import 'package:preppal/services/profile_service.dart'; // profile service
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -21,7 +21,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _locationController;
   String? _profilePicUrl;
   File? _imageFile;
-  bool _isSaving = false; // Renamed from _isLoading for clarity
+  bool _isSaving = false; // saving state
   bool _hasChanges = false;
 
   @override
@@ -61,7 +61,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       print('[EditProfileScreen] Image picked: ${pickedFile.path}');
       setState(() {
         _imageFile = File(pickedFile.path);
-        _profilePicUrl = null; // Clear existing URL if new image is picked
+        _profilePicUrl = null; // clear existing URL
         _hasChanges = true;
       });
       print('[EditProfileScreen] _imageFile after pick: ${_imageFile?.path}');
@@ -73,8 +73,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Future<void> _saveProfile() async {
     print('[EditProfileScreen] _saveProfile called. _hasChanges: $_hasChanges, _formKey valid: ${_formKey.currentState?.validate()}');
     if (!_formKey.currentState!.validate() || !_hasChanges) {
-      // If no changes or form is invalid, don't proceed.
-      // Optionally, show a message if trying to save without changes.
+      // no changes or invalid form
       if (!_hasChanges && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No changes to save.')),
@@ -106,36 +105,34 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     final profileService = ref.read(profileServiceProvider);
     
-    // Construct the profile with updated text fields
+    // construct profile with updated fields
     UserProfile profileToSave = UserProfile(
       id: currentUserProfile.id,
-      email: currentUserProfile.email, // Assuming email is not editable here
+      email: currentUserProfile.email, // email not editable
       displayName: _displayNameController.text,
       location: _locationController.text,
-      // profilePicUrl will be handled by the service if _imageFile is present
-      // If _imageFile is null, use the existing _profilePicUrl
+      // profilePicUrl handled by service
       profilePicUrl: _imageFile == null ? _profilePicUrl : currentUserProfile.profilePicUrl,
       createdAt: currentUserProfile.createdAt,
-      updatedAt: Timestamp.now(), // Service might overwrite this
+      updatedAt: Timestamp.now(), // service might overwrite
     );
     print('[EditProfileScreen] Profile to save: ${profileToSave.toJson()}');
     print('[EditProfileScreen] _imageFile to save: ${_imageFile?.path}');
 
     try {
       print('[EditProfileScreen] Calling profileService.updateUserProfile...');
-      // The ProfileService's updateUserProfile method should handle the image upload
-      // if an imageFile is provided.
+      // ProfileService.updateUserProfile handles image upload.
       await profileService.updateUserProfile(profileToSave, imageFile: _imageFile);
       print('[EditProfileScreen] profileService.updateUserProfile completed.');
       
-      ref.refresh(userProfileProvider); // Refresh profile data globally
+      ref.refresh(userProfileProvider); // refresh profile data
       print('[EditProfileScreen] userProfileProvider refreshed.');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),
         );
-        Navigator.pop(context); // Go back after successful save
+        Navigator.pop(context); // go back
       }
     } catch (e) {
       if (mounted) {
@@ -176,10 +173,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           if (userProfile == null) {
             return const Center(child: Text('User profile not found.'));
           }
-          // Initialize controllers here if not done in initState or if data can change
-          // _displayNameController.text = userProfile.displayName ?? '';
-          // _locationController.text = userProfile.location ?? '';
-          // _profilePicUrl = userProfile.profilePicUrl; // This might conflict if _imageFile is set
+          // Init controllers here if not in initState or if data changes.
+          // _profilePicUrl might conflict if _imageFile set.
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -194,8 +189,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       backgroundImage: _imageFile != null
                           ? FileImage(_imageFile!)
                           : (_profilePicUrl != null && _profilePicUrl!.isNotEmpty
-                              ? NetworkImage(_profilePicUrl!)
-                              : null) as ImageProvider?,
+                               ? NetworkImage(_profilePicUrl!)
+                               : null) as ImageProvider?,
                       child: _imageFile == null && (_profilePicUrl == null || _profilePicUrl!.isEmpty)
                           ? const Icon(Icons.camera_alt, size: 50)
                           : null,
@@ -225,7 +220,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     decoration: const InputDecoration(labelText: 'Location'),
                   ),
                   const SizedBox(height: 30),
-                  // Save and Cancel buttons were previously here, AppBar button is now 'Done'
+                  // Save/Cancel buttons moved.
                 ],
               ),
             ),

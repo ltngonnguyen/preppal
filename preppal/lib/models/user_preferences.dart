@@ -7,7 +7,7 @@ enum AppTheme {
   calmResilience,
 }
 
-// Helper to convert string to AppTheme, defaulting to system
+// string to AppTheme
 AppTheme _appThemeFromString(String? themeString) {
   if (themeString == null) return AppTheme.system;
   switch (themeString.toLowerCase()) {
@@ -24,11 +24,11 @@ AppTheme _appThemeFromString(String? themeString) {
 }
 
 class UserPreferences {
-  final String id; // Corresponds to the document ID, typically 'settings' or user UID
+  final String id; // doc ID
   final bool expiryRemindersEnabled;
   final bool simulatedAlertsEnabled;
   final bool progressNotificationsEnabled;
-  final AppTheme appTheme; // Changed from String
+  final AppTheme appTheme; // theme
   final bool offlineSyncEnabled;
   final Timestamp updatedAt;
 
@@ -37,14 +37,14 @@ class UserPreferences {
     this.expiryRemindersEnabled = true,
     this.simulatedAlertsEnabled = true,
     this.progressNotificationsEnabled = true,
-    this.appTheme = AppTheme.system, // Default theme
+    this.appTheme = AppTheme.system, // default theme
     this.offlineSyncEnabled = true,
     required this.updatedAt,
   });
 
-  // Creates a UserPreferences instance from a Firestore document snapshot.
+  // create from Firestore snapshot
   factory UserPreferences.fromFirestore(DocumentSnapshot<Map<String, dynamic>> snapshot, String id) {
-    final data = snapshot.data() ?? {}; // Ensure data is not null
+    final data = snapshot.data() ?? {}; // ensure data
     return UserPreferences(
       id: id,
       expiryRemindersEnabled: data['expiryRemindersEnabled'] ?? true,
@@ -56,23 +56,23 @@ class UserPreferences {
     );
   }
 
-  // Converts this UserPreferences instance to a Map for Firestore storage.
+  // convert to Map for Firestore
   Map<String, dynamic> toJson() {
     return {
       'expiryRemindersEnabled': expiryRemindersEnabled,
       'simulatedAlertsEnabled': simulatedAlertsEnabled,
       'progressNotificationsEnabled': progressNotificationsEnabled,
-      'appTheme': appTheme.toString().split('.').last, // Store as string
+      'appTheme': appTheme.toString().split('.').last, // store as string
       'offlineSyncEnabled': offlineSyncEnabled,
       'updatedAt': updatedAt,
-      // 'id' is not typically stored as a field in its own document
+      // 'id' not stored
     };
   }
 
-  // Creates a UserPreferences instance from a Map (e.g., from shared_preferences).
+  // create from Map
   factory UserPreferences.fromMap(Map<String, dynamic> map, String id) {
     return UserPreferences(
-      id: id, // Or map['id'] if you store it in the map
+      id: id, // or map['id']
       expiryRemindersEnabled: map['expiryRemindersEnabled'] ?? true,
       simulatedAlertsEnabled: map['simulatedAlertsEnabled'] ?? true,
       progressNotificationsEnabled: map['progressNotificationsEnabled'] ?? true,
@@ -84,20 +84,20 @@ class UserPreferences {
     );
   }
 
-  // Converts this UserPreferences instance to a Map for local storage.
+  // convert to Map for local storage
   Map<String, dynamic> toMap() {
     return {
-      // 'id': id, // Optionally store id if needed for local distinction
+      // 'id': id, // optional local ID
       'expiryRemindersEnabled': expiryRemindersEnabled,
       'simulatedAlertsEnabled': simulatedAlertsEnabled,
       'progressNotificationsEnabled': progressNotificationsEnabled,
-      'appTheme': appTheme.toString().split('.').last, // Store as string
+      'appTheme': appTheme.toString().split('.').last, // store as string
       'offlineSyncEnabled': offlineSyncEnabled,
-      'updatedAt': updatedAt.millisecondsSinceEpoch, // Store as int for broader compatibility
+      'updatedAt': updatedAt.millisecondsSinceEpoch, // store as int
     };
   }
 
-  // Creates a new UserPreferences instance with optional field overrides.
+  // create new with overrides
   UserPreferences copyWith({
     String? id,
     bool? expiryRemindersEnabled,

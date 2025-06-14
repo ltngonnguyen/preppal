@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserProfile {
-  final String id; // Firestore document ID 
+  final String id; // doc ID
   final String email;
   final String? displayName;
   final String? profilePicUrl;
@@ -19,7 +19,7 @@ class UserProfile {
     required this.updatedAt,
   });
 
-  // Creates a UserProfile instance from a Firestore document snapshot.
+  // create from Firestore snapshot
   factory UserProfile.fromFirestore(DocumentSnapshot<Map<String, dynamic>> snapshot, String id) {
     final data = snapshot.data();
     return UserProfile(
@@ -28,12 +28,12 @@ class UserProfile {
       displayName: data?['displayName'],
       profilePicUrl: data?['profilePicUrl'],
       location: data?['location'],
-      createdAt: data?['createdAt'] ?? Timestamp.now(), // Default to now if missing
-      updatedAt: data?['updatedAt'] ?? Timestamp.now(), // Default to now if missing
+      createdAt: data?['createdAt'] ?? Timestamp.now(), // default to now
+      updatedAt: data?['updatedAt'] ?? Timestamp.now(), // default to now
     );
   }
 
-  // Converts this UserProfile instance to a Map for Firestore storage.
+  // convert to Map for Firestore
   Map<String, dynamic> toJson() {
     return {
       'email': email,
@@ -45,7 +45,7 @@ class UserProfile {
     };
   }
 
-  // Creates a new UserProfile instance with optional field overrides.
+  // create new with overrides
   UserProfile copyWith({
     String? id,
     String? email,

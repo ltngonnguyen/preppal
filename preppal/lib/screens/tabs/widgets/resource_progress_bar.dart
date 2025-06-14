@@ -42,7 +42,7 @@ class _ResourceProgressBarState extends State<ResourceProgressBar>
       end: initialProgress,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeInOutCubic, // Accelerates and decelerates
+      curve: Curves.easeInOutCubic, // Accelerates/decelerates
     ));
 
     _animationController.forward();
@@ -116,8 +116,6 @@ class _ResourceProgressBarState extends State<ResourceProgressBar>
             AnimatedBuilder(
               animation: _progressAnimation,
               builder: (context, child) {
-                // Optional: Log animation value frequently if needed for fine-grained debugging, but can be noisy.
-                // print('[ResourceProgressBar] AnimationBuilder: resourceName=${widget.resourceName}, animationValue=${_progressAnimation.value}');
                 return ClipRRect(
                   borderRadius: BorderRadius.circular(10.0),
                   child: LinearProgressIndicator(

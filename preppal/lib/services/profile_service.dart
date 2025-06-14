@@ -8,15 +8,15 @@ import '../models/user_preferences.dart';
 
 class ProfileService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final firebase_storage.FirebaseStorage _storage = firebase_storage.FirebaseStorage.instance; // Added storage instance
+  final firebase_storage.FirebaseStorage _storage = firebase_storage.FirebaseStorage.instance; // Storage instance
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String? get _userId => _auth.currentUser?.uid;
   User? get _currentUser => _auth.currentUser;
 
-  // --- User Profile Management ---
+  // User Profile Management
 
-  // Document reference for the current user's profile
+  // Doc ref for current user profile.
   DocumentReference<UserProfile> _userProfileRef() {
     final userId = _userId;
     if (userId == null) {
@@ -28,8 +28,7 @@ class ProfileService {
         );
   }
 
-  // Stream of the current user's profile
-  // Creates a default profile if one doesn't exist on first access.
+  // Stream of current user profile. Creates default if not exists on first access.
   Stream<UserProfile?> getUserProfile() {
     final user = _currentUser;
     if (user == null) return Stream.value(null);
@@ -49,7 +48,7 @@ class ProfileService {
     });
   }
 
-  // Update the current user's profile
+  // Update current user profile.
   Future<void> updateUserProfile(UserProfile profile, {File? imageFile}) async {
     print('[ProfileService] updateUserProfile called. Profile ID: ${profile.id}, ImageFile exists: ${imageFile != null}');
     if (imageFile != null) {
@@ -93,7 +92,7 @@ class ProfileService {
     print('[ProfileService] Firestore profile update complete for ID: ${profileToUpdate.id}');
   }
 
-  // Create a user profile document (e.g., after registration)
+  // Create user profile doc (e.g., after registration).
   Future<void> createUserProfile(User user, {String? displayName}) async {
     final initialProfile = UserProfile(
       id: user.uid,
@@ -106,22 +105,21 @@ class ProfileService {
   }
 
 
-  // --- User Preferences Management ---
+  // User Preferences Management
 
-  // Document reference for the current user's preferences
+  // Doc ref for current user preferences.
   DocumentReference<UserPreferences> _userPreferencesRef() {
     final userId = _userId;
     if (userId == null) {
       throw Exception("User not logged in. Cannot access preferences.");
     }
-    // Using a fixed document ID "settings" within the subcollection
+    // Using fixed doc ID "settings" in subcollection.
     return _db.collection('users').doc(userId).collection('preferences').doc('settings').withConverter<UserPreferences>(
           fromFirestore: (snapshots, _) => UserPreferences.fromFirestore(snapshots, snapshots.id),
           toFirestore: (prefs, _) => prefs.toJson(),
         );
   }
 
-  // Stream of the current user's preferences
   // Creates default preferences if none exist.
   Stream<UserPreferences?> getUserPreferences() {
     if (_userId == null) return Stream.value(null);
@@ -129,10 +127,10 @@ class ProfileService {
     return _userPreferencesRef().snapshots().asyncMap((snapshot) async {
       if (!snapshot.exists) {
         final defaultPreferences = UserPreferences(
-          id: 'settings', // Fixed ID for the preferences document
+          id: 'settings', // Ensure ID always 'settings'.
           updatedAt: Timestamp.now(),
         );
-        // Create the default preferences document if it doesn't exist
+        // Create default preferences doc if not exists.
         await _userPreferencesRef().set(defaultPreferences);
         return defaultPreferences;
       }
@@ -140,12 +138,12 @@ class ProfileService {
     });
   }
 
-  // Update the current user's preferences
+  // Update current user preferences.
   Future<void> updateUserPreferences(UserPreferences preferences) async {
     if (_userId == null) throw Exception("User not logged in.");
-    // Ensure the updatedAt field is current and id is correct
+    // Ensure updatedAt current and ID correct.
     final preferencesToUpdate = preferences.copyWith(
-      id: 'settings', // Ensure the ID is always 'settings'
+      id: 'settings', // Ensure ID always 'settings'.
       updatedAt: Timestamp.now()
     );
     await _userPreferencesRef().set(preferencesToUpdate, SetOptions(merge: true));

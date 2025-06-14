@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart'; // intl
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/stockpile_item.dart';
-// import '../../services/firestore_service.dart'; // Will be replaced
-import '../../services/stockpile_repository.dart'; // Added
+// import '../../services/firestore_service.dart'; // old
+import '../../services/stockpile_repository.dart'; // new
 
 class AddEditStockpileItemDialog extends StatefulWidget {
   final StockpileItem? item;
@@ -16,8 +16,8 @@ class AddEditStockpileItemDialog extends StatefulWidget {
 
 class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog> {
   final _formKey = GlobalKey<FormState>();
-  // final FirestoreService _firestoreService = FirestoreService(); // Replaced
-  final StockpileRepository _stockpileRepository = StockpileRepository.instance; // Added
+  // final FirestoreService _firestoreService = FirestoreService(); // old
+  final StockpileRepository _stockpileRepository = StockpileRepository.instance; // new
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   late TextEditingController _nameController;
@@ -35,15 +35,15 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
   ];
   String? _selectedCategory;
 
-  // Original list of all possible units
+  // all units
   final List<String> _allUnits = ['pcs', 'kg', 'g', 'L', 'mL', 'can', 'bottle', 'box', 'roll', 'tube', 'kit', 'set', 'other'];
-  // Dynamically filtered list of units based on category
+  // filtered units
   List<String> _filteredUnits = [];
   String? _selectedUnit;
 
-  // Controllers for new fields
-  late TextEditingController _volumePerUnitController; // For Water: 'bottle', 'can'
-  late TextEditingController _foodTotalDaysSupplyController; // For Food: 'kg', 'g', 'pcs', 'can', 'bottle', 'box'
+  // new controllers
+  late TextEditingController _volumePerUnitController; // water: 'bottle', 'can'
+  late TextEditingController _foodTotalDaysSupplyController; // food: 'kg', 'g', 'pcs', 'can', 'bottle', 'box'
 
   static const double dailyWaterNeedPerPerson = 3.0;
 
@@ -52,8 +52,8 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
     super.initState();
     _nameController = TextEditingController(text: widget.item?.name ?? '');
     _quantityController = TextEditingController(text: widget.item?.quantity.toString() ?? '1');
-    _unitController = TextEditingController(text: widget.item?.unit ?? ''); // For 'other' unit text
-    _categoryController = TextEditingController(text: widget.item?.category ?? ''); // For 'Other' category text
+    _unitController = TextEditingController(text: widget.item?.unit ?? ''); // for 'other' unit
+    _categoryController = TextEditingController(text: widget.item?.category ?? ''); // for 'Other' category
     _notesController = TextEditingController(text: widget.item?.notes ?? '');
     _expiryDate = widget.item?.expiryDate;
     _selectedReminder = widget.item?.reminderPreference;
@@ -61,7 +61,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
     _selectedCategory = widget.item?.category;
     _selectedUnit = widget.item?.unit;
 
-    // Initialize new controllers
+    // init new controllers
     _volumePerUnitController = TextEditingController(text: widget.item?.unitVolumeLiters?.toString() ?? '');
     _foodTotalDaysSupplyController = TextEditingController(text: widget.item?.totalDaysOfSupplyPerItem?.toString() ?? '');
 
@@ -69,24 +69,19 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
     if (_selectedCategory == null && _categories.isNotEmpty) {
       _selectedCategory = _categories[0];
     }
-    // Initial filter of units based on category
+    // initial unit filter
     _updateFilteredUnits();
 
 
-    // If editing an item with a unit not in the default list, add it to _allUnits (and it will be handled by _updateFilteredUnits)
+    // if editing item with non-default unit, add to _allUnits
     if (_selectedUnit != null && !_allUnits.contains(_selectedUnit!)) {
       _allUnits.add(_selectedUnit!);
-      _updateFilteredUnits(); // Re-filter if a new unit was added
+      _updateFilteredUnits(); // re-filter
     }
-     // If editing, and the current unit is not in the filtered list (e.g. old data), ensure it's available for selection
+     // if editing, ensure current unit is selectable
     if (_selectedUnit != null && !_filteredUnits.contains(_selectedUnit!)) {
-        // This scenario implies the unit might be valid for the category but was not initially in _allUnits or _filteredUnits logic needs adjustment
-        // For now, if it's an existing item, we trust its unit and ensure it's selectable.
-        // A better approach might be to ensure _allUnits is comprehensive or _updateFilteredUnits handles custom saved units correctly.
-        // If _selectedUnit is not in _filteredUnits but it's the item's current unit, add it temporarily to _filteredUnits for display.
-        // However, the main logic in _updateFilteredUnits should ideally cover all valid scenarios.
-        // Let's ensure that if _selectedUnit is set, it's part of the dropdown.
-        // The _updateFilteredUnits should handle adding 'other' if it's selected.
+        // this implies unit might be valid but not in initial list
+        // ensure _selectedUnit is part of dropdown
     }
 
 
@@ -102,23 +97,21 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
       } else if (_selectedCategory == 'Water') {
         _filteredUnits = ['L', 'mL', 'bottle', 'can', 'other'];
       } else {
-        // For other categories, show all units initially, or a relevant subset
-        _filteredUnits = List.from(_allUnits); // Show all for non-food/water or specific logic
+        // other categories: show all units
+        _filteredUnits = List.from(_allUnits); // show all
       }
 
-      // Ensure 'other' is always an option if it's not already included by category-specific logic
+      // ensure 'other' is always an option
       if (!_filteredUnits.contains('other')) {
         _filteredUnits.add('other');
       }
 
-      // If the currently selected unit is no longer valid for the new category (and it's not 'other'),
-      // reset it to null or a default valid unit.
+      // if selected unit invalid for new category, reset
       if (_selectedUnit != null && !_filteredUnits.contains(_selectedUnit!)) {
         _selectedUnit = null;
-        _unitController.clear(); // Clear custom unit text if master unit changes
+        _unitController.clear(); // clear custom unit
       }
-      // If 'other' is selected, it should remain selected.
-      // If _selectedUnit is null and _filteredUnits is not empty, could default to _filteredUnits[0]
+      // if 'other' selected, keep it.
     });
   }
 
@@ -130,8 +123,8 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
     _unitController.dispose();
     _categoryController.dispose();
     _notesController.dispose();
-    _volumePerUnitController.dispose(); // Dispose new controller
-    _foodTotalDaysSupplyController.dispose(); // Dispose new controller
+    _volumePerUnitController.dispose(); // dispose controller
+    _foodTotalDaysSupplyController.dispose(); // dispose controller
     super.dispose();
   }
 
@@ -169,12 +162,12 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
       double? unitVolumeLitersValue;
       double? totalDaysOfSupplyPerItemValue;
 
-      // Calculations based on category and unit
+      // calculations by category and unit
       if (currentCategory == 'Water') {
         if (currentUnit == 'L') {
-          unitVolumeLitersValue = 1.0; // Volume of 1 Liter unit is 1L
+          unitVolumeLitersValue = 1.0; // 1L unit volume
         } else if (currentUnit == 'mL') {
-          unitVolumeLitersValue = 0.001; // Volume of 1 mL unit is 0.001L
+          unitVolumeLitersValue = 0.001; // 1mL unit volume
         } else if (['bottle', 'can'].contains(currentUnit)) {
           unitVolumeLitersValue = double.tryParse(_volumePerUnitController.text.trim());
         }
@@ -182,7 +175,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
         if (unitVolumeLitersValue != null && unitVolumeLitersValue > 0) {
           totalDaysOfSupplyPerItemValue = (unitVolumeLitersValue * quantity) / dailyWaterNeedPerPerson;
         } else if (['bottle', 'can'].contains(currentUnit)) {
-            // If volume per unit is required but not provided or invalid for water containers
+            // if volume per unit required but not provided
              ScaffoldMessenger.of(context).showSnackBar(
                const SnackBar(content: Text('Please enter a valid volume per unit for water containers.'), backgroundColor: Colors.red),
              );
@@ -190,7 +183,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
              return;
         }
       } else if (currentCategory == 'Food') {
-        // For food, user directly inputs total days of supply for the item quantity
+        // food: user inputs total days supply
         if (['kg', 'g', 'pcs', 'can', 'bottle', 'box'].contains(currentUnit)) {
             totalDaysOfSupplyPerItemValue = double.tryParse(_foodTotalDaysSupplyController.text.trim());
             if (totalDaysOfSupplyPerItemValue == null || totalDaysOfSupplyPerItemValue <= 0) {
@@ -201,7 +194,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                  return;
             }
         }
-        // unitVolumeLitersValue remains null for food
+        // unitVolumeLitersValue remains null
       }
 
       final newItem = StockpileItem(
@@ -214,23 +207,23 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
         reminderPreference: _selectedReminder,
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         addedDate: widget.item?.addedDate ?? DateTime.now(),
-        updatedAt: DateTime.now(), // Repository will also set this, but good to have here.
+        updatedAt: DateTime.now(), // repo sets this
         userId: userId,
-        unitVolumeLiters: unitVolumeLitersValue, // Calculated or input
-        totalDaysOfSupplyPerItem: totalDaysOfSupplyPerItemValue, // Calculated or input
-        syncStatus: 'pending_sync', // Repository will also set this
+        unitVolumeLiters: unitVolumeLitersValue, // calculated or input
+        totalDaysOfSupplyPerItem: totalDaysOfSupplyPerItemValue, // calculated or input
+        syncStatus: 'pending_sync', // repo sets this
       );
 
       try {
         if (widget.item == null) {
-          // await _firestoreService.addStockpileItem(newItem); // Replaced
-          await _stockpileRepository.create(newItem); // Use repository
+          // await _firestoreService.addStockpileItem(newItem); // old
+          await _stockpileRepository.create(newItem); // new
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Item added successfully!')),
           );
         } else {
-          // await _firestoreService.updateStockpileItem(newItem); // Replaced
-          await _stockpileRepository.update(newItem); // Use repository
+          // await _firestoreService.updateStockpileItem(newItem); // old
+          await _stockpileRepository.update(newItem); // new
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Item updated successfully!')),
           );
@@ -282,7 +275,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                   return null;
                 },
               ),
-              // Unit input: Dropdown for predefined units, text field for 'other'.
+              // unit input: dropdown for predefined, text field for 'other'
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -291,7 +284,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                     child: DropdownButtonFormField<String>(
                       value: _selectedUnit,
                       decoration: const InputDecoration(labelText: 'Unit'),
-                      items: _filteredUnits.map((String unit) { // Changed from _units to _filteredUnits
+                      items: _filteredUnits.map((String unit) { // from _units to _filteredUnits
                         return DropdownMenuItem<String>(
                           value: unit,
                           child: Text(unit),
@@ -305,10 +298,10 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                           }
                         });
                       },
-                      // Unit validation can be optional.
+                      // unit validation optional
                     ),
                   ),
-                  // Show text field only if 'other' unit is selected.
+                  // show text field if 'other' unit selected
                   if (_selectedUnit == 'other') ...[
                     const SizedBox(width: 8),
                     Expanded(
@@ -339,8 +332,8 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                 onChanged: (String? newValue) {
                   setState(() {
                     _selectedCategory = newValue;
-                    _updateFilteredUnits(); // Call to update units based on category
-                    // Clear specific input fields when category changes
+                    _updateFilteredUnits(); // update units based on category
+                    // clear specific input fields
                     _volumePerUnitController.clear();
                     _foodTotalDaysSupplyController.clear();
                     if (newValue != 'Other') {
@@ -350,7 +343,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                 },
                 validator: (value) => value == null ? 'Please select a category' : null,
               ),
-              // Show text field only if 'Other' category is selected.
+              // show text field if 'Other' category selected
               if (_selectedCategory == 'Other')
                 TextFormField(
                   controller: _categoryController,
@@ -363,7 +356,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                   },
                 ),
 
-              // Conditional TextFormField for Water volume per unit
+              // conditional TextFormField for Water volume/unit
               if (_selectedCategory == 'Water' && (_selectedUnit == 'bottle' || _selectedUnit == 'can'))
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
@@ -383,7 +376,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                   ),
                 ),
 
-              // Conditional TextFormField for Food days of supply per unit
+              // conditional TextFormField for Food days supply/unit
               if (_selectedCategory == 'Food' &&
                   (_selectedUnit == 'kg' || _selectedUnit == 'g' || _selectedUnit == 'pcs' || _selectedUnit == 'can' || _selectedUnit == 'bottle' || _selectedUnit == 'box'))
                 Padding(
@@ -421,7 +414,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                 decoration: const InputDecoration(labelText: 'Notes (Optional)'),
                 maxLines: 2,
               ),
-              // Expiry reminder options, shown if an expiry date is set.
+              // expiry reminder options
               if (_expiryDate != null) ...[
                 const SizedBox(height: 16),
                 Text('Reminder for Expiry:', style: Theme.of(context).textTheme.titleSmall),
@@ -448,7 +441,7 @@ class _AddEditStockpileItemDialogState extends State<AddEditStockpileItemDialog>
                       onSelected: (bool selected) {
                         setState(() {
                           _selectedReminder = selected ? 'custom' : null;
-                          // TODO: Implement custom reminder date picker for 'custom' option.
+                          // TODO: custom reminder date picker.
                           if (selected) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Custom reminder selection TBD.')),

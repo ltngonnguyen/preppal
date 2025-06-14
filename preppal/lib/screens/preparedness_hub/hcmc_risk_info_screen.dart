@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 
-// Displays information about key risks in HCMC.
+// HCMC risk info.
 class HcmcRiskInfoScreen extends StatelessWidget {
   const HcmcRiskInfoScreen({super.key});
 
-  // Navigates to a detailed screen for the selected risk.
+  // navigate to risk detail.
   void _navigateToRiskDetail(BuildContext context, String riskName) {
-    // TODO: Implement navigation to a dedicated risk detail screen.
-    // This screen would show "before, during, after" information.
+    // TODO: nav to risk detail screen.
+    // shows "before, during, after" info.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('View details for $riskName - TBD')),
     );
@@ -26,7 +26,7 @@ class HcmcRiskInfoScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // TODO: Implement search functionality for risks.
+              // TODO: risk search.
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Search risks - TBD')),
               );
@@ -47,7 +47,7 @@ class HcmcRiskInfoScreen extends StatelessWidget {
             const SizedBox(height: 8.0),
             const Text('- Urban Flooding'),
             const Text('- Extreme Heat'),
-            const Text('- Air Quality Issues'), // Example risk.
+            const Text('- Air Quality Issues'), // example risk.
             const SizedBox(height: 20.0),
             Card(
               elevation: 2.0,
@@ -67,7 +67,7 @@ class HcmcRiskInfoScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     Text(
-                      '[Tap to view details by district/area]',
+                      '[Tap for district/area details]',
                       style: Theme.of(context).textTheme.bodySmall,
                       textAlign: TextAlign.center,
                     ),
@@ -113,7 +113,7 @@ class HcmcRiskInfoScreen extends StatelessWidget {
     );
   }
 
-  // Builds a tappable ListTile for a specific risk.
+  // Builds tappable ListTile.
   Widget _buildRiskItem(BuildContext context, {required String title, required List<String> subItems, required VoidCallback onTap}) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
@@ -129,6 +129,4 @@ class HcmcRiskInfoScreen extends StatelessWidget {
       ),
     );
   }
-  // The comments below were from a previous refactoring step and are no longer relevant.
-  // They are removed to clean up the code.
 }

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Date formatting.
-import 'dart:async'; // For StreamSubscription
-import 'dart:math' as math; // For math.max
+import 'package:intl/intl.dart'; // for date format
+import 'dart:async'; // async stuff
+import 'dart:math' as math; // for math
 
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Added for persistence
+import 'package:shared_preferences/shared_preferences.dart'; // save stuff
 
 import '../../models/stockpile_item.dart';
 import '../../services/stockpile_repository.dart';
 import 'add_edit_stockpile_item_dialog.dart';
-import 'widgets/resource_progress_bar.dart'; // New progress bar widget
+import 'widgets/resource_progress_bar.dart'; // progress bar widget
 
 class StockpileTab extends StatefulWidget {
   const StockpileTab({super.key});
@@ -23,37 +23,37 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
   final StockpileRepository _stockpileRepository = StockpileRepository.instance;
   String _currentFilter = "All";
 
-  // Data and Milestones
+  // supply data
   double _foodSupplyDays = 0.0;
   double _waterSupplyDays = 0.0;
-  final Map<String, double> _otherAggregatedSupplies = {}; // Category name -> supply days/count
-  final Map<String, bool> _nonBarResourcesStocked = {}; // Category name -> true if items exist
+  final Map<String, double> _otherAggregatedSupplies = {}; // Category -> supply days/count
+  final Map<String, bool> _nonBarResourcesStocked = {}; // Category -> true if items exist
 
-  // Store previous supply values to correctly detect milestone achievements
+  // old supply values
   double _previousFoodSupplyDays = 0.0;
   double _previousWaterSupplyDays = 0.0;
   final Map<String, double> _previousOtherAggregatedSupplies = {};
 
-  // Trackers for already celebrated milestones - no longer static
+  // celebrated ones
   final Set<double> _celebratedFoodMilestones = {};
   final Set<double> _celebratedWaterMilestones = {};
-  final Map<String, Set<double>> _celebratedOtherMilestones = {}; // category -> set of celebrated milestones
+  final Map<String, Set<double>> _celebratedOtherMilestones = {}; // other celebrated
 
   double _foodMilestoneTarget = 3.0;
   double _waterMilestoneTarget = 3.0;
-  final Map<String, double> _otherMilestoneTargets = {}; // Category name -> milestone target
+  final Map<String, double> _otherMilestoneTargets = {}; // other targets
  
   static const List<double> _milestones = [3, 7, 15, 30, 60, 90, 180, 365, 730, 1095];
-  static const double _dailyWaterNeedPerPerson = 3.0; // Liters
+  static const double _dailyWaterNeedPerPerson = 3.0; // L
 
-  // Controllers
+  // controls
   late ConfettiController _confettiController;
   final AudioPlayer _audioPlayer = AudioPlayer();
   StreamSubscription<List<StockpileItem>>? _stockpileSubscription;
 
   bool _isLoadingSummary = true;
 
-  // Animation Controllers for progress bars - managed by ResourceProgressBar itself now
+  // animation controllers for progress
   // Map<String, AnimationController> _progressAnimationControllers = {};
 
   @override
@@ -61,10 +61,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 2));
     _loadCelebratedMilestones().then((_) {
-      // Data processing relies on celebrated milestones being loaded.
-      // Initial data load might happen before this if _subscribeToStockpileUpdates is called directly.
-      // Consider if _subscribeToStockpileUpdates should be called after loading.
-      // For now, assuming _processStockpileData will correctly use the loaded sets.
+      // load milestones first
       _subscribeToStockpileUpdates();
     });
   }
@@ -82,14 +79,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
       _celebratedWaterMilestones.addAll(waterMilestonesStr.map((e) => double.parse(e)));
     }
 
-    // For other categories, we need to iterate through known categories or discover keys
-    // For simplicity, let's assume we might need to pre-populate _otherMilestoneTargets keys
-    // or iterate prefs keys if they follow a pattern.
-    // This part might need refinement based on how other categories are managed.
-    // For now, if _otherAggregatedSupplies has keys, we try to load for them.
-    // This means _load should ideally happen after an initial _processStockpileData or categories are known.
-    // A safer approach is to store a list of categories that have "other" milestones.
-    // Let's refine this: load based on keys found in prefs.
+    // load other celebrated milestones
     final allKeys = prefs.getKeys();
     for (String key in allKeys) {
       if (key.startsWith('celebrated_other_milestones_')) {
@@ -101,7 +91,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
       }
     }
     print('[StockpileTab] Loaded celebrated milestones: Food: $_celebratedFoodMilestones, Water: $_celebratedWaterMilestones, Other: $_celebratedOtherMilestones');
-    if(mounted) setState(() {}); // Refresh UI if needed after loading, though logic handles it
+    if(mounted) setState(() {}); // update ui
   }
 
   Future<void> _saveCelebratedMilestones(String resourceName, double milestone) async {
@@ -120,8 +110,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
       milestonesSet = _celebratedOtherMilestones[resourceName] ?? {};
     }
     
-    // The set itself is already updated in _playCelebrationsSequentially.
-    // We just need to save its current state.
+    // save current celebrated
     await prefs.setStringList(key, milestonesSet.map((e) => e.toString()).toList());
     print('[StockpileTab] Saved celebrated milestone $milestone for $resourceName to $key.');
   }
@@ -140,7 +129,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
       _isLoadingSummary = true;
     });
     _stockpileSubscription = _stockpileRepository
-        .getStockpileItemsStream(filter: "All") // Always get all for summary
+        .getStockpileItemsStream(filter: "All") // get all items for summary
         .listen((items) {
       _processStockpileData(items);
       if (mounted) {
@@ -160,10 +149,10 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     });
   }
 
-  void _processStockpileData(List<StockpileItem> items) {
+  Future<void> _processStockpileData(List<StockpileItem> items) async { // now async
     print('[StockpileTab] _processStockpileData started. Item count: ${items.length}');
 
-    // Store current values as previous before recalculating
+    // save old values
     _previousFoodSupplyDays = _foodSupplyDays;
     _previousWaterSupplyDays = _waterSupplyDays;
     _previousOtherAggregatedSupplies.clear();
@@ -173,8 +162,8 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
 
     double currentFoodDays = 0;
     double currentWaterLiters = 0;
-    final Map<String, double> tempOtherSupplies = {}; // For categories with 'daysOfSupply'
-    final Map<String, int> tempOtherCounts = {}; // For categories to count items
+    final Map<String, double> tempOtherSupplies = {}; // supplies with days
+    final Map<String, int> tempOtherCounts = {}; // supplies to count
     final Set<String> tempNonBarStocked = {};
 
     for (var item in items) {
@@ -184,8 +173,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
       } else if (category.toLowerCase() == 'water') {
         currentWaterLiters += (item.unitVolumeLiters ?? 0) * item.quantity;
       } else {
-        // For other categories, decide if they are quantifiable for "days of supply"
-        // or just counted. This logic might need refinement based on actual categories.
+        // handle other categories
         if (item.totalDaysOfSupplyPerItem != null && item.totalDaysOfSupplyPerItem! > 0) {
            tempOtherSupplies[category] = (tempOtherSupplies[category] ?? 0) + item.totalDaysOfSupplyPerItem!;
         } else {
@@ -199,19 +187,19 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     _waterSupplyDays = currentWaterLiters / _dailyWaterNeedPerPerson;
 
     _otherAggregatedSupplies.clear();
-    // _otherMilestoneTargets.clear(); // Don't clear here, update them based on new supply
+    // _otherMilestoneTargets.clear(); // keep existing targets
     _nonBarResourcesStocked.clear();
 
     tempOtherSupplies.forEach((category, supply) {
       _otherAggregatedSupplies[category] = supply;
-      // Initialize target if not present, or keep existing to pass to _updateMilestoneTarget
+      // set initial target if needed
       if (!_otherMilestoneTargets.containsKey(category)) {
         _otherMilestoneTargets[category] = _getInitialMilestoneTarget(supply, null);
       }
     });
     
     tempNonBarStocked.forEach((category) {
-        // If a category was counted but also had daysOfSupply, prioritize daysOfSupply bar.
+        // only if not already a bar
         if (!_otherAggregatedSupplies.containsKey(category)) {
              _nonBarResourcesStocked[category] = true;
         }
@@ -219,42 +207,39 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
 
     List<Map<String, dynamic>> allAchievedMilestones = [];
 
-    // Update milestones and check for achievements
+    // check milestones
     print('[StockpileTab] Before Food milestone update: currentFoodDays=$currentFoodDays, _foodMilestoneTarget=$_foodMilestoneTarget, _previousFoodSupplyDays=$_previousFoodSupplyDays');
-    final previousFoodDisplayMilestone = _foodMilestoneTarget; // This is the target the bar was aiming for
-    var foodUpdateResult = _updateMilestoneTarget(currentFoodDays, _foodMilestoneTarget, "Food", previousFoodDisplayMilestone, _previousFoodSupplyDays);
+    final previousFoodDisplayMilestone = _foodMilestoneTarget; // old target for bar
+    var foodUpdateResult = await _updateMilestoneTarget(currentFoodDays, _foodMilestoneTarget, "Food", previousFoodDisplayMilestone, _previousFoodSupplyDays); // needs await
     _foodMilestoneTarget = foodUpdateResult['nextMilestoneToAimFor'] as double;
     allAchievedMilestones.addAll(foodUpdateResult['achievedMilestones'] as List<Map<String, dynamic>>);
 
     print('[StockpileTab] Before Water milestone update: currentWaterDays=$_waterSupplyDays, _waterMilestoneTarget=$_waterMilestoneTarget, _previousWaterSupplyDays=$_previousWaterSupplyDays');
     final previousWaterDisplayMilestone = _waterMilestoneTarget;
-    var waterUpdateResult = _updateMilestoneTarget(_waterSupplyDays, _waterMilestoneTarget, "Water", previousWaterDisplayMilestone, _previousWaterSupplyDays);
+    var waterUpdateResult = await _updateMilestoneTarget(_waterSupplyDays, _waterMilestoneTarget, "Water", previousWaterDisplayMilestone, _previousWaterSupplyDays); // needs await
     _waterMilestoneTarget = waterUpdateResult['nextMilestoneToAimFor'] as double;
     allAchievedMilestones.addAll(waterUpdateResult['achievedMilestones'] as List<Map<String, dynamic>>);
     
     List<String> categoriesToRemove = [];
-    // Iterate over a copy of keys for safe removal if a category becomes empty
+    // use copy of keys for safe removal
     List<String> currentOtherCategories = _otherAggregatedSupplies.keys.toList();
 
     for (String category in currentOtherCategories) {
-        final supply = _otherAggregatedSupplies[category]!; // Should exist
+        final supply = _otherAggregatedSupplies[category]!; // must exist
         final previousMilestoneForCategory = _otherMilestoneTargets[category] ?? _milestones.first;
         final oldSupplyForCategory = _previousOtherAggregatedSupplies[category] ?? 0.0;
         print('[StockpileTab] Before Other ($category) milestone update: newSupply=$supply, target=$previousMilestoneForCategory, oldSupplyForCategory=$oldSupplyForCategory');
         
-        var otherUpdateResult = _updateMilestoneTarget(supply, previousMilestoneForCategory, category, previousMilestoneForCategory, oldSupplyForCategory);
+        var otherUpdateResult = await _updateMilestoneTarget(supply, previousMilestoneForCategory, category, previousMilestoneForCategory, oldSupplyForCategory); // needs await
         _otherMilestoneTargets[category] = otherUpdateResult['nextMilestoneToAimFor'] as double;
         allAchievedMilestones.addAll(otherUpdateResult['achievedMilestones'] as List<Map<String, dynamic>>);
     }
     
-    // Clean up categories that no longer have items with supply days
-    // This needs to be done carefully. If a category in _otherAggregatedSupplies is no longer in tempOtherSupplies, it means it has no items with daysOfSupply.
-    // It might still have items if it's also in tempNonBarStocked.
+    // remove categories carefully
     List<String> keysFromAggregated = _otherAggregatedSupplies.keys.toList();
     for (var key in keysFromAggregated) {
         if (!tempOtherSupplies.containsKey(key)) {
-            // This category no longer has items that contribute to a progress bar.
-            // It might still be in _nonBarResourcesStocked if it has other types of items.
+            // no longer has progress bar items
             categoriesToRemove.add(key);
         }
     }
@@ -263,16 +248,18 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
         print('[StockpileTab] Removing category $key from progress bar tracking (no more items with supply days).');
         _otherAggregatedSupplies.remove(key);
         _otherMilestoneTargets.remove(key);
-        // Do not remove from _previousOtherAggregatedSupplies here, it's for the next cycle's comparison.
+        // keep for next comparison
     });
 
 
     if (mounted) {
       setState(() {
         print('[StockpileTab] _processStockpileData finished. Triggering setState. Will play ${allAchievedMilestones.length} celebrations sequentially.');
+        // (debug log removed)
+        // print('[StockpileTab DEBUG] Achieved Milestones before play: $allAchievedMilestones');
       });
       if (allAchievedMilestones.isNotEmpty) {
-        // Use a microtask to ensure setState completes build before dialogs
+        // microtask for dialogs after build
         Future.microtask(() => _playCelebrationsSequentially(allAchievedMilestones));
       }
     }
@@ -280,46 +267,41 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
   
   double _getInitialMilestoneTarget(double currentSupply, double? existingTarget) {
     if (existingTarget != null) {
-        // If already tracking, find the milestone that current supply is working towards
+        // find next milestone if tracking
         for (var milestone in _milestones) {
             if (currentSupply < milestone) return milestone;
         }
-        return _milestones.last; // Maxed out or beyond last milestone
+        return _milestones.last; // maxed out
     }
-    // For new categories, find the first milestone greater than current supply
+    // new category, find first milestone
     return _milestones.firstWhere((m) => currentSupply < m, orElse: () => _milestones.last);
   }
 
-  // Added oldSupply to track changes more accurately for celebration triggers.
-  // Returns a Map containing the 'nextMilestoneToAimFor' and a 'achievedMilestones' list.
-  Map<String, dynamic> _updateMilestoneTarget(double currentSupply, double currentMilestoneTarget, String resourceName, double previousMilestoneTarget, double oldSupply) {
+  // oldSupply for better celebration check
+  // returns next target and achieved list
+  // now async, returns Future
+  Future<Map<String, dynamic>> _updateMilestoneTarget(double currentSupply, double currentMilestoneTarget, String resourceName, double previousMilestoneTarget, double oldSupply) async {
     print('[StockpileTab._updateMilestoneTarget for $resourceName] Start: currentSupply=$currentSupply, currentTarget=$currentMilestoneTarget, previousTarget=$previousMilestoneTarget, oldSupply=$oldSupply');
     
     List<Map<String, dynamic>> achievedThisUpdate = [];
     double nextMilestoneToAimFor = currentMilestoneTarget;
-    // bool initialTargetWasHitOrExceeded = currentSupply >= currentMilestoneTarget; // Not directly used, but good for context
+    // (unused variable)
 
-    // Iteratively check and celebrate milestones if current supply has jumped over them
-    // This loop will handle multiple milestone achievements in one update.
-    // double effectiveCurrentTarget = currentMilestoneTarget;  // Not strictly needed with new logic
-    // If previousMilestoneTarget was higher (e.g. items removed), start checking from a lower milestone.
-    // if (previousMilestoneTarget > currentMilestoneTarget && currentSupply < previousMilestoneTarget) {
-    //     effectiveCurrentTarget = _milestones.firstWhere((m) => oldSupply < m, orElse: () => _milestones.last);
-    //     print('[StockpileTab._updateMilestoneTarget for $resourceName] Supply decreased below previous target. Adjusted effectiveCurrentTarget to $effectiveCurrentTarget');
-    // }
+    // check multiple achievements
+    // (not needed)
+    // if items removed, check lower milestones
 
 
-    // Find the actual milestone we should be working towards based on current supply
-    // This will be the target for the progress bar.
+    // target for progress bar
     nextMilestoneToAimFor = _milestones.firstWhere((m) => currentSupply < m, orElse: () => _milestones.last);
-    if (currentSupply >= _milestones.last) { // If supply meets or exceeds the largest milestone
+    if (currentSupply >= _milestones.last) { // if supply is >= largest milestone
         nextMilestoneToAimFor = _milestones.last;
     }
     print('[StockpileTab._updateMilestoneTarget for $resourceName] Initial nextMilestoneToAimFor calculated as: $nextMilestoneToAimFor');
 
 
-    // Milestone Achievement Check
-    // Iterate through milestones between the old supply's position and new supply's position
+    // check for achieved milestones
+    // check milestones between old and new supply
     for (final milestoneValue in _milestones) {
         bool justCrossedThisMilestone = currentSupply >= milestoneValue && oldSupply < milestoneValue;
         bool alreadyCelebrated = false;
@@ -332,30 +314,54 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
             alreadyCelebrated = _celebratedOtherMilestones[resourceName]!.contains(milestoneValue);
         }
 
+        // (debug log removed)
+        // print('[StockpileTab DEBUG _updateMilestoneTarget for $resourceName] Checking milestone: $milestoneValue. currentSupply: $currentSupply, oldSupply: $oldSupply, justCrossed: $justCrossedThisMilestone, alreadyCelebrated: $alreadyCelebrated');
+
         if (justCrossedThisMilestone && !alreadyCelebrated) {
-            if (milestoneValue > 0 ) { // Don't celebrate 0 day milestones
+            if (milestoneValue > 0 ) { // no 0 day celebrations
                 print('[StockpileTab._updateMilestoneTarget for $resourceName] Milestone $milestoneValue DETECTED as newly achieved (not celebrated yet)! currentSupply=$currentSupply, oldSupply=$oldSupply.');
                 achievedThisUpdate.add({'resourceName': resourceName, 'milestone': milestoneValue});
             }
+        } else if (currentSupply < milestoneValue && alreadyCelebrated) {
+            // un-celebrate if supply drops
+            bool removedSuccessfully = false;
+            if (resourceName == "Food") {
+                removedSuccessfully = _celebratedFoodMilestones.remove(milestoneValue);
+            } else if (resourceName == "Water") {
+                removedSuccessfully = _celebratedWaterMilestones.remove(milestoneValue);
+            } else if (_celebratedOtherMilestones.containsKey(resourceName)) {
+                removedSuccessfully = _celebratedOtherMilestones[resourceName]!.remove(milestoneValue);
+                if (removedSuccessfully && _celebratedOtherMilestones[resourceName]!.isEmpty) {
+                    _celebratedOtherMilestones.remove(resourceName); // cleanup map
+                    print('[StockpileTab._updateMilestoneTarget for $resourceName] Also removed empty set from _celebratedOtherMilestones.');
+                }
+            }
+
+            if (removedSuccessfully) {
+                print('[StockpileTab._updateMilestoneTarget for $resourceName] Milestone $milestoneValue UN-CELEBRATED (supply dropped below $milestoneValue). Persisting change.');
+                await _saveCelebratedMilestones(resourceName, milestoneValue); // save removal
+            }
         } else if (justCrossedThisMilestone && alreadyCelebrated) {
             print('[StockpileTab._updateMilestoneTarget for $resourceName] Milestone $milestoneValue was crossed (currentSupply=$currentSupply, oldSupply=$oldSupply), but already celebrated.');
+        } else {
+            // (debug log removed)
+            if (!justCrossedThisMilestone && !alreadyCelebrated) { // log missed new celebration
+                 print('[StockpileTab _updateMilestoneTarget for $resourceName] Milestone $milestoneValue NOT added for celebration. justCrossed: $justCrossedThisMilestone (current: $currentSupply, old: $oldSupply), alreadyCelebrated: $alreadyCelebrated.');
+            }
         }
     }
     
-    // If current supply is less than the original currentMilestoneTarget (due to item removal),
-    // we need to ensure nextMilestoneToAimFor is correctly set to the milestone just above the new currentSupply.
-    if (currentSupply < currentMilestoneTarget) { // This check is specifically for when items are REMOVED
+    // if items removed, adjust target
+    if (currentSupply < currentMilestoneTarget) { // for item removal
         nextMilestoneToAimFor = _milestones.firstWhere((m) => currentSupply < m, orElse: () => _milestones.last);
          print('[StockpileTab._updateMilestoneTarget for $resourceName] Supply $currentSupply is less than original target $currentMilestoneTarget (items removed?). Adjusted nextMilestoneToAimFor to $nextMilestoneToAimFor');
     }
 
 
-    // If the supply is exactly on a milestone that it's aiming for, and it's not the last one,
-    // the *next* target should be the one after that.
-    // This ensures the bar shows 0% for the next tier if a milestone is exactly met.
+    // if on milestone, aim for next one
     if (currentSupply >= nextMilestoneToAimFor && nextMilestoneToAimFor != _milestones.last) {
         int currentIndex = _milestones.indexOf(nextMilestoneToAimFor);
-        if (currentIndex != -1 && currentSupply >= _milestones[currentIndex]) { // Check if current supply actually meets or exceeds this milestone
+        if (currentIndex != -1 && currentSupply >= _milestones[currentIndex]) { // if supply >= this milestone
              if (currentIndex + 1 < _milestones.length) {
                 nextMilestoneToAimFor = _milestones[currentIndex + 1];
                 print('[StockpileTab._updateMilestoneTarget for $resourceName] Supply $currentSupply meets/exceeds current aim $nextMilestoneToAimFor (not last). Advanced nextMilestoneToAimFor to ${_milestones[currentIndex+1]}');
@@ -363,10 +369,9 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
         }
     }
     
-    // Ensure that if current supply is greater than or equal to the highest milestone, the target is the highest milestone.
-    // And the bar should show 100% if currentSupply >= _milestones.last
+    // if supply >= highest, target is highest
     if (currentSupply >= _milestones.last) {
-        nextMilestoneToAimFor = _milestones.last; // Target is the last milestone
+        nextMilestoneToAimFor = _milestones.last; // target last milestone
         print('[StockpileTab._updateMilestoneTarget for $resourceName] Supply $currentSupply meets/exceeds last milestone. Set nextMilestoneToAimFor to ${_milestones.last}');
     }
 
@@ -379,14 +384,13 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     if (!mounted) return;
     print('[StockpileTab._triggerMilestoneCelebration] Celebrating $resourceName - ${achievedMilestone} days.');
     _confettiController.play();
-    // Consider playing sound only once if multiple dialogs show, or per dialog.
-    // For now, per dialog.
+    // sound per dialog for now
     _audioPlayer.play(AssetSource('sounds/milestone_achieved.wav'));
 
-    // Using await here will pause _playCelebrationsSequentially until dialog is dismissed
+    // await pauses sequence
     await showDialog(
       context: context,
-      barrierDismissible: false, // User must interact with dialog
+      barrierDismissible: false, // user must click
       builder: (context) => AlertDialog(
         title: const Text('🎉 Milestone Achieved! 🎉'),
         content: Text('Congratulations! You now have ${achievedMilestone.toInt()} days of $resourceName!'),
@@ -400,19 +404,19 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
         ],
       ),
     );
-    // Stop confetti after dialog is dismissed, or let it run its course based on its own duration.
-    // _confettiController.stop(); // Optional: stop confetti here
+    // optional: stop confetti
+    // _confettiController.stop(); // stop confetti
   }
 
   Future<void> _playCelebrationsSequentially(List<Map<String, dynamic>> achievements) async {
     if (!mounted) return;
     print('[StockpileTab._playCelebrationsSequentially] Starting to play ${achievements.length} celebrations.');
     for (var achievement in achievements) {
-      if (!mounted) break; // Stop if widget is disposed during sequence
+      if (!mounted) break; // stop if disposed
       final resourceName = achievement['resourceName'] as String;
       final milestone = achievement['milestone'] as double;
       
-      // Double check it hasn't been celebrated by a rapid successive call (though less likely now)
+      // check again if celebrated
       bool alreadyMarkedAsCelebrated = false;
       if (resourceName == "Food") alreadyMarkedAsCelebrated = _celebratedFoodMilestones.contains(milestone);
       else if (resourceName == "Water") alreadyMarkedAsCelebrated = _celebratedWaterMilestones.contains(milestone);
@@ -426,8 +430,8 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
       print('[StockpileTab._playCelebrationsSequentially] Now celebrating $resourceName - $milestone days.');
       await _triggerMilestoneCelebration(resourceName, milestone);
       
-      // Mark as celebrated AFTER the dialog is dismissed
-      if (mounted) { // Check mounted again as await might have taken time
+      // mark after dialog
+      if (mounted) { // check mounted after await
         bool newlyMarked = false;
         if (resourceName == "Food") {
           newlyMarked = _celebratedFoodMilestones.add(milestone);
@@ -443,7 +447,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
           await _saveCelebratedMilestones(resourceName, milestone);
         }
       }
-      // Optional: Add a small delay between celebrations if desired
+      // optional delay
       // await Future.delayed(const Duration(milliseconds: 500));
     }
     print('[StockpileTab._playCelebrationsSequentially] Finished playing all celebrations.');
@@ -452,7 +456,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
   void _showAddItemDialog({StockpileItem? item}) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Dialog not dismissible by tapping outside.
+      barrierDismissible: false, // not dismissible by tap outside
       builder: (BuildContext context) {
         return AddEditStockpileItemDialog(item: item);
       },
@@ -472,18 +476,18 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
           ),
         ],
       ),
-      body: Stack( // Use Stack for Confetti
+      body: Stack( // for confetti
         alignment: Alignment.topCenter,
         children: [
           Column(
             children: [
               _buildFilterChips(),
-              _buildSummarySection(), // New summary section
+              _buildSummarySection(), // summary section
               const Divider(),
-              _buildStockpileList(), // Existing list view, ensure it's Expanded
+              _buildStockpileList(), // list view, needs Expanded
             ],
           ),
-          ConfettiWidget( // Confetti overlay
+          ConfettiWidget( // confetti
             confettiController: _confettiController,
             blastDirectionality: BlastDirectionality.explosive,
             shouldLoop: false,
@@ -529,7 +533,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     // Food Progress Bar
     summaryWidgets.add(
       ResourceProgressBar(
-        key: ValueKey('food_${_foodSupplyDays}_$_foodMilestoneTarget'), // Ensure widget rebuilds
+        key: ValueKey('food_${_foodSupplyDays}_$_foodMilestoneTarget'), // to rebuild widget
         resourceName: 'Food Supply',
         currentSupply: _foodSupplyDays,
         milestoneTarget: _foodMilestoneTarget,
@@ -553,7 +557,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     // Other Trackable Resources
     _otherAggregatedSupplies.forEach((category, supply) {
       final milestone = _otherMilestoneTargets[category] ?? _milestones.last;
-      // Determine color based on category - could be more sophisticated
+      // color by category
       Color categoryColor = Colors.primaries[category.hashCode % Colors.primaries.length];
       summaryWidgets.add(
         ResourceProgressBar(
@@ -562,14 +566,14 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
           currentSupply: supply,
           milestoneTarget: milestone,
           progressBarColor: categoryColor,
-          unit: 'days', // Assuming 'days' for now, might need adjustment
+          unit: 'days', // unit is days, maybe change later
         ),
       );
     });
     
     // Non-Bar Resources
     _nonBarResourcesStocked.forEach((category, stocked) {
-        if (stocked && !_otherAggregatedSupplies.containsKey(category)) { // Ensure it's not already a progress bar
+        if (stocked && !_otherAggregatedSupplies.containsKey(category)) { // if not already a bar
              summaryWidgets.add(
                 Card(
                     margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
@@ -583,7 +587,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     });
 
 
-    if (summaryWidgets.isEmpty && !_isLoadingSummary) {
+    if (summaryWidgets.isEmpty && !_isLoadingSummary) { // show if not loading and no widgets
         return Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
@@ -605,10 +609,10 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
           if (summaryWidgets.isNotEmpty)
             ListView(
               shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(), // if inside another scrollview
+              physics: const NeverScrollableScrollPhysics(), // if inside scrollview
               children: summaryWidgets,
             )
-          else if (!_isLoadingSummary) // Only show if not loading and no widgets
+          else if (!_isLoadingSummary) // show if not loading and no widgets
              Center(child: Text("Add items to see your stockpile summary.", style: Theme.of(context).textTheme.bodySmall)),
         ],
       ),
@@ -630,7 +634,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: SingleChildScrollView( // Added to prevent overflow for empty message
+                      child: SingleChildScrollView( // prevent overflow
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -654,8 +658,8 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
                 }
 
                 final allItems = snapshot.data!;
-                // TODO: Implement filtering logic based on _currentFilter.
-                final items = allItems; // Using all items until filtering is implemented.
+                // TODO: filter logic
+                final items = allItems; // use all for now
 
                 return ListView.builder(
                   itemCount: items.length,
@@ -691,7 +695,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
                                     ),
                                     const SizedBox(width: 8),
                                     IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                      icon: const Icon(Icons.delete_outlined, color: Colors.redAccent),
                                       onPressed: () async {
                                         final confirm = await showDialog<bool>(
                                           context: context,
@@ -714,8 +718,8 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
                                         );
                                         if (confirm == true && item.id != null) {
                                           try {
-                                            // await _firestoreService.deleteStockpileItem(item.id!); // Replaced
-                                            await _stockpileRepository.delete(item.id!); // Updated
+                                            // await _firestoreService.deleteStockpileItem(item.id!); // old way
+                                            await _stockpileRepository.delete(item.id!); // new way
                                             if (mounted) {
                                               ScaffoldMessenger.of(context).showSnackBar(
                                                 SnackBar(content: Text('"${item.name}" deleted.')),
@@ -761,9 +765,9 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
                 );
               },
             ),
-          ); // Closes Expanded widget and the return statement for _buildStockpileList
-  } // Closes the _buildStockpileList method
+          ); // end Expanded for _buildStockpileList
+  } // end _buildStockpileList
 
-  // FloatingActionButton removed; "Add Item" is in AppBar as per wireframe.
+  // FAB removed, add item in appbar
 
-} // Closes the _StockpileTabState class
+} // end _StockpileTabState

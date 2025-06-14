@@ -4,7 +4,7 @@ import 'tabs/dashboard_tab.dart';
 import 'tabs/alerts_tab.dart';
 import 'tabs/community_tab.dart';
 import 'tabs/profile_tab.dart';
-import 'settings_screen.dart'; // Import the SettingsScreen
+import 'settings_screen.dart'; // SettingsScreen import
 
 class HomeScreen extends StatefulWidget {
  const HomeScreen({super.key});
@@ -14,23 +14,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0; // Default to Home/Dashboard tab.
+  int _selectedIndex = 0; // default tab
 
-  // Widgets for each tab in the bottom navigation bar.
+  // bottom nav tabs
   static final List<Widget> _widgetOptions = <Widget>[
-    const DashboardTab(), // Index 0: Home
-    const AlertsTab(),    // Index 1: Alerts
-    const CommunityTab(), // Index 2: Community
-    const ProfileTab(),   // Index 3: Profile
+    const DashboardTab(), // home
+    const AlertsTab(),    // alerts
+    const CommunityTab(), // community
+    const ProfileTab(),   // profile
   ];
 
-  // AppBar titles corresponding to each tab.
-  // 'PrepPal' is used for the Home/Dashboard tab.
+  // appbar titles
   static const List<String> _tabTitles = <String>[
-    'PrepPal',       // Title for DashboardTab (Home).
-    'Alerts',        // Title for AlertsTab.
-    'Community Hub', // Title for CommunityTab.
-    'User Profile',  // Title for ProfileTab.
+    'PrepPal',       // dashboard title
+    'Alerts',        // alerts title
+    'Community Hub', // community title
+    'User Profile',  // profile title
   ];
 
 
@@ -44,11 +43,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // AppBar title changes based on the selected tab.
+        // title changes with tab
         title: Text(_selectedIndex == 0 ? 'PrepPal' : _tabTitles[_selectedIndex]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings), // Changed to filled settings icon
+            icon: const Icon(Icons.settings), // settings icon
             onPressed: () {
               Navigator.push(
                 context,
@@ -67,15 +66,14 @@ class _HomeScreenState extends State<HomeScreen> {
           const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
-            label: 'Home', // Label for Home tab.
+            label: 'Home', // home label
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.warning_amber_outlined),
             activeIcon: Icon(Icons.warning_amber),
-            label: 'Alerts', // Label for Alerts tab.
+            label: 'Alerts', // alerts label
           ),
-          // Bottom navigation items align with the wireframe:
-          // Home, Alerts, Community, Profile.
+          // nav items
           const BottomNavigationBarItem(
             icon: Icon(Icons.groups_outlined),
             activeIcon: Icon(Icons.groups),

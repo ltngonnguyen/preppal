@@ -5,20 +5,20 @@ import '../models/user_preferences.dart';
 import '../services/profile_service.dart';
 import '../services/local_preference_service.dart';
 
-// Provider for FirebaseAuth instance
+// Firebase Auth provider.
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
 
-// Provider for ProfileService
+// Profile Service provider.
 final profileServiceProvider = Provider<ProfileService>((ref) {
   return ProfileService();
 });
 
-// Provider for LocalPreferenceService
+// Local Preference Service provider.
 final localPreferenceServiceProvider = Provider<LocalPreferenceService>((ref) {
   return LocalPreferenceService();
 });
 
-// StreamProvider for the current user's profile
+// StreamProvider for user profile.
 final userProfileProvider = StreamProvider<UserProfile?>((ref) {
   final profileService = ref.watch(profileServiceProvider);
   final authState = ref.watch(firebaseAuthProvider).authStateChanges();
@@ -27,15 +27,13 @@ final userProfileProvider = StreamProvider<UserProfile?>((ref) {
     if (user == null) {
       return null;
     }
-    // Attempt to fetch profile. If it's null (e.g., first time after registration),
-    // the ProfileService's getUserProfile might return a default or null.
-    // Consider creating profile explicitly after registration if not handled by service.
+    // Fetch profile.
     return profileService.getUserProfile().first;
   });
 });
 
 
-// StateNotifier for UserPreferences
+// User Preferences State Notifier.
 class UserPreferencesNotifier extends StateNotifier<AsyncValue<UserPreferences?>> {
   final ProfileService _profileService;
   final LocalPreferenceService _localPreferenceService;
@@ -52,25 +50,22 @@ class UserPreferencesNotifier extends StateNotifier<AsyncValue<UserPreferences?>
       return;
     }
     try {
-      // 1. Try loading from local preferences first for quick UI update
+      // 1. Load from local prefs.
       final localPrefs = await _localPreferenceService.getPreferences();
       if (localPrefs != null) {
         state = AsyncValue.data(localPrefs);
       }
 
-      // 2. Then, fetch from Firestore to get the latest and sync
-      // The stream will keep it updated. For init, we can take the first emission.
+      // 2. Fetch from Firestore.
       final firestorePrefsStream = _profileService.getUserPreferences();
       await for (final prefs in firestorePrefsStream) {
         if (prefs != null) {
           state = AsyncValue.data(prefs);
-          // Update local cache with Firestore data
+          // Update local cache.
           await _localPreferenceService.savePreferences(prefs);
-          break; // Take the first valid emission for init
+          break; // Take first valid emission.
         } else if (state is! AsyncData || (state as AsyncData).value == null) {
-          // If no local prefs and no firestore prefs (e.g. first time ever)
-          // ProfileService.getUserPreferences should create and return defaults.
-          // If it can return null initially before creation, handle here:
+          // If no local/Firestore prefs, create defaults.
            final defaultPrefs = _localPreferenceService.getDefaultPreferences(_userId!); // Or 'settings'
            await _profileService.updateUserPreferences(defaultPrefs); // Save to Firestore
            await _localPreferenceService.savePreferences(defaultPrefs); // Save to local
@@ -85,15 +80,15 @@ class UserPreferencesNotifier extends StateNotifier<AsyncValue<UserPreferences?>
 
   Future<void> updatePreferences(UserPreferences newPreferences) async {
     if (_userId == null) return;
-    state = AsyncValue.data(newPreferences); // Optimistic update
+    state = AsyncValue.data(newPreferences); // Optimistic update.
     try {
       await _localPreferenceService.savePreferences(newPreferences);
       await _profileService.updateUserPreferences(newPreferences);
-      // Re-fetch or rely on stream to confirm, current state is optimistic.
+      // Re-fetch or rely on stream.
     } catch (e, s) {
-      // Revert or show error
+      // Revert or show error.
       state = AsyncValue.error(e, s);
-      // Consider re-fetching old state if optimistic update needs reverting
+      // Consider re-fetching old state.
     }
   }
 
@@ -104,7 +99,7 @@ class UserPreferencesNotifier extends StateNotifier<AsyncValue<UserPreferences?>
     await updatePreferences(updatedPrefs);
   }
 
-  // Add other specific update methods like updateExpiryRemindersEnabled, etc.
+  // Other update methods.
   Future<void> updateExpiryRemindersEnabled(bool enabled) async {
     if (state.value == null || _userId == null) return;
     final updatedPrefs = state.value!.copyWith(expiryRemindersEnabled: enabled);
@@ -130,7 +125,7 @@ class UserPreferencesNotifier extends StateNotifier<AsyncValue<UserPreferences?>
   }
 }
 
-// StateNotifierProvider for UserPreferences
+// UserPreferences StateNotifierProvider.
 final userPreferencesProvider = StateNotifierProvider<UserPreferencesNotifier, AsyncValue<UserPreferences?>>((ref) {
   final profileService = ref.watch(profileServiceProvider);
   final localPreferenceService = ref.watch(localPreferenceServiceProvider);

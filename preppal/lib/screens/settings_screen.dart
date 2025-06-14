@@ -1,41 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Added for logout
+import 'package:firebase_auth/firebase_auth.dart'; // for logout
 import 'package:preppal/models/user_preferences.dart';
 import 'package:preppal/providers/profile_providers.dart';
 import 'package:preppal/screens/profile/edit_profile_screen.dart';
-import 'package:preppal/models/user_profile.dart'; // Added for UserProfile
-import 'package:preppal/services/profile_service.dart'; // Added for ProfileService
-import 'dart:io'; // Added for File
+import 'package:preppal/models/user_profile.dart'; // for UserProfile
+import 'package:preppal/services/profile_service.dart'; // for ProfileService
+import 'dart:io'; // for File
 
-class SettingsScreen extends ConsumerStatefulWidget { // Changed to ConsumerStatefulWidget
+class SettingsScreen extends ConsumerStatefulWidget { // consumer stateful
   const SettingsScreen({super.key});
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState(); // Added createState
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState(); // create state
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> { // Added _SettingsScreenState
-  // Removed _editedUserProfile, _newProfileImageFile, _hasUnsavedChanges, _isSaving state variables
+class _SettingsScreenState extends ConsumerState<SettingsScreen> { // state
+  // no old state vars
 
   Future<void> _navigateToEditProfile() async {
-    // Simply navigate to EditProfileScreen. It will handle its own saving.
-    await Navigator.push<void>( // No longer expecting a result that triggers a save here
+    // navigate to EditProfileScreen.
+    await Navigator.push<void>( // no save trigger
       context,
       MaterialPageRoute(
         builder: (context) => const EditProfileScreen(),
       ),
     );
-    // After EditProfileScreen pops, userProfileProvider might have been refreshed by EditProfileScreen itself.
-    // If not, and an immediate reflection of changes here is needed (e.g. if SettingsScreen displayed profile info),
-    // then a mechanism to trigger a refresh or listen to changes would be required.
-    // For now, assuming EditProfileScreen handles its refresh and this screen doesn't need to react to a result.
+    // EditProfileScreen refreshes userProfileProvider.
   }
 
-  // Removed _saveChanges() method as it's now handled in EditProfileScreen
+  // _saveChanges() removed
 
   @override
-  Widget build(BuildContext context) { // Removed WidgetRef ref as it's available via this.ref
+  Widget build(BuildContext context) { // ref available via this.ref
     final userPreferences = ref.watch(userPreferencesProvider);
     final userPreferencesNotifier = ref.read(userPreferencesProvider.notifier);
     final auth = ref.watch(firebaseAuthProvider);
@@ -43,7 +40,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> { // Added _Set
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        // Removed actions list with the Save button
+        // save button removed
       ),
       body: userPreferences.when(
         data: (prefs) {
@@ -112,7 +109,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> { // Added _Set
               ListTile(
                 title: const Text('Edit Profile Information'),
                 trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: _navigateToEditProfile, // Changed to call _navigateToEditProfile
+                onTap: _navigateToEditProfile, // navigate to edit profile
               ),
               const Divider(),
 
@@ -136,13 +133,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> { // Added _Set
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error, // Use error color for logout
+                    backgroundColor: Theme.of(context).colorScheme.error, // error color
                     foregroundColor: Theme.of(context).colorScheme.onError,
                   ),
                   onPressed: () async {
                     await auth.signOut();
-                    // Navigate to the root, AuthWrapper will then show LoginScreen
-                    if (mounted) { // Ensure the widget is still in the tree
+                    // navigate to root, AuthWrapper shows LoginScreen
+                    if (mounted) { // ensure widget in tree
                       Navigator.of(context).popUntil((route) => route.isFirst);
                     }
                   },

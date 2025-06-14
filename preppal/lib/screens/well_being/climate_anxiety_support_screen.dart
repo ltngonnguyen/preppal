@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-// TODO: Uncomment and add url_launcher to pubspec.yaml to enable opening links.
+// TODO: Uncomment and add url_launcher to pubspec.yaml for links.
 // import 'package:url_launcher/url_launcher.dart';
 
-// Screen providing resources and support for climate anxiety.
+// Screen for climate anxiety resources/support.
 class ClimateAnxietySupportScreen extends StatelessWidget {
   const ClimateAnxietySupportScreen({super.key});
 
-  // Utility to launch URLs. Requires url_launcher package.
+  // URL launcher utility. Requires url_launcher.
   // Future<void> _launchUrl(String urlString) async {
   //   final Uri url = Uri.parse(urlString);
   //   if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
@@ -46,7 +46,7 @@ class ClimateAnxietySupportScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Well-being & Climate Support'),
-        leading: IconButton( // Standard back navigation.
+        leading: IconButton( // Standard back nav.
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -54,7 +54,7 @@ class ClimateAnxietySupportScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
-              // Shows a disclaimer dialog.
+              // Shows disclaimer dialog.
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
@@ -92,7 +92,7 @@ class ClimateAnxietySupportScreen extends StatelessWidget {
               context,
               title: "What is it & Why it's normal",
               onTap: () {
-                // TODO: Navigate to detailed info or show dialog for "What is it".
+                // TODO: Nav to detailed info or show dialog for "What is it".
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Climate anxiety info - TBD')),
                 );
@@ -110,7 +110,7 @@ class ClimateAnxietySupportScreen extends StatelessWidget {
               title: "Guided Breathing Exercise (2 min)",
               actionText: "Play >",
               onTap: () {
-                // TODO: Implement audio playback or navigation for breathing exercise.
+                // TODO: Implement audio playback or nav for breathing exercise.
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Breathing exercise - TBD')),
                 );
@@ -148,22 +148,22 @@ class ClimateAnxietySupportScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            // TODO: Replace with actual HCMC resource links and enable _launchUrl.
+            // TODO: Replace with actual HCMC resource links; enable _launchUrl.
             ListTile(
               leading: const Icon(Icons.link),
               title: const Text('Local HCMC Mental Health Organization'),
-              onTap: () { /* _launchUrl('https://example-hcmc-mental-health.org'); */
+              onTap: () { /* _launchUrl('https://example.org'); */
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mental health org link - TBD')));
               },
             ),
             ListTile(
               leading: const Icon(Icons.link),
               title: const Text('Positive Climate Action Group HCMC'),
-              onTap: () { /* _launchUrl('https://example-hcmc-climate-action.org'); */
+              onTap: () { /* _launchUrl('https://example.org'); */
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Climate action group link - TBD')));
               },
             ),
-            // Add more curated HCMC-specific resource links as needed.
+            // Add more curated HCMC-specific resource links.
           ],
         ),
       ),

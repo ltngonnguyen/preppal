@@ -4,11 +4,11 @@ import 'package:preppal/screens/well_being/climate_anxiety_support_screen.dart';
 import 'package:preppal/screens/tabs/preparedness_hub_tab.dart';
 import 'package:preppal/screens/tabs/stockpile_tab.dart';
 
-// Main dashboard screen widget.
+// dashboard screen.
 class DashboardTab extends StatelessWidget {
   const DashboardTab({super.key});
 
-  // Builds a styled card button for dashboard navigation.
+  // styled card button for nav.
   Widget _buildDashboardButton(
     BuildContext context, {
     required IconData icon,
@@ -49,8 +49,8 @@ class DashboardTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final User? user = FirebaseAuth.instance.currentUser;
-    // TODO: Fetch actual alert status dynamically.
-    const String alertStatus = "No Active Alerts"; // Example: "ACTIVE ALERT: FLOOD WARNING!"
+    // TODO: fetch alert status.
+    const String alertStatus = "No Active Alerts"; // example
 
     return SingleChildScrollView(
       child: Padding(
@@ -77,19 +77,18 @@ class DashboardTab extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
             ),
-            const SizedBox(height: 20.0),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
               ),
               onPressed: () {
-                // Navigates to the Alerts tab.
+                // navigate to Alerts tab.
                 final ScaffoldMessengerState scaffoldMessenger = ScaffoldMessenger.of(context);
                 final Widget? bottomNavWidget = Scaffold.of(context).widget.bottomNavigationBar;
                 if (bottomNavWidget is BottomNavigationBar && bottomNavWidget.onTap != null) {
-                    bottomNavWidget.onTap!(1); // Index 1 for AlertsTab.
+                    bottomNavWidget.onTap!(1); // index 1 for AlertsTab.
                 } else {
-                    // Fallback if direct tap is not possible.
+                    // fallback if direct tap not possible.
                     scaffoldMessenger.showSnackBar(
                         const SnackBar(content: Text('Could not navigate to Alerts. Try bottom navigation.')),
                     );
@@ -104,10 +103,10 @@ class DashboardTab extends StatelessWidget {
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(), // Disables GridView's scrolling.
+              physics: const NeverScrollableScrollPhysics(), // disables GridView scrolling.
               crossAxisSpacing: 16.0,
               mainAxisSpacing: 16.0,
-              childAspectRatio: 1.1, // Aspect ratio for dashboard buttons.
+              childAspectRatio: 1.1, // aspect ratio for buttons.
               children: [
                 _buildDashboardButton(
                   context,

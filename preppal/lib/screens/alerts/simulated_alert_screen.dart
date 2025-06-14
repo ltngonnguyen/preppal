@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Date formatting.
-// TODO: Uncomment and import StockpileTab for navigation.
+import 'package:intl/intl.dart'; // date format
+// TODO: import StockpileTab for nav.
 // import 'package:preppal/screens/tabs/stockpile_tab.dart';
 
-// Displays a simulated urgent alert.
+// simulated urgent alert.
 class SimulatedAlertScreen extends StatelessWidget {
-  // Constructor initializes alert timestamps.
-  // In a real application, alert data would be passed in or fetched.
+  // constructor init alert timestamps.
   SimulatedAlertScreen({super.key})
       : issuedTime = DateTime.now().subtract(const Duration(hours: 1, minutes: 25)),
         lastUpdatedTime = DateTime.now().subtract(const Duration(minutes: 5));
 
-  // Example alert data.
+  // alert data.
   final String alertTitle = "URGENT ALERT: FLOOD WARNING!";
   final DateTime issuedTime;
   final String location = "District 7, HCMC";
@@ -20,7 +19,7 @@ class SimulatedAlertScreen extends StatelessWidget {
     "If in a known flood zone, prepare to evacuate.",
     "Move valuables to higher ground.",
     "Secure your home (electricity, gas).",
-    "Check your emergency kit.", // This action links to the stockpile.
+    "Check your emergency kit.", // links to stockpile.
     "Monitor official HCMC channels for updates.",
   ];
   final DateTime lastUpdatedTime;
@@ -54,15 +53,15 @@ class SimulatedAlertScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PrepPal'), // App name in AppBar.
-        automaticallyImplyLeading: false, // Urgent alert screen should not have a back button.
+        title: const Text('PrepPal'), // app name
+        automaticallyImplyLeading: false, // no back button
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12.0),
-            child: Icon(Icons.warning_amber_rounded, color: Colors.red[700], size: 30), // Alert icon.
+            child: Icon(Icons.warning_amber_rounded, color: Colors.red[700], size: 30), // alert icon
           ),
         ],
-        backgroundColor: Colors.red[100], // AppBar color to indicate alert severity.
+        backgroundColor: Colors.red[100], // appbar color
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -92,10 +91,7 @@ class SimulatedAlertScreen extends StatelessWidget {
             ...recommendedActions.map((action) {
               if (action.contains("Check your emergency kit")) {
                 return _buildActionItem(context, action, isLink: true, onTap: () {
-                  // TODO: Implement navigation to StockpileTab.
-                  // Requires StockpileTab to be importable and potentially specific navigator setup
-                  // if this screen is outside the main tab navigation stack.
-                  // Example: Navigator.push(context, MaterialPageRoute(builder: (context) => const StockpileTab()));
+                  // TODO: nav to StockpileTab.
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Stockpile navigation - TBD')),
                   );
@@ -111,7 +107,7 @@ class SimulatedAlertScreen extends StatelessWidget {
                 title: const Text('View HCMC Flood Evacuation Routes'),
                 trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () {
-                  // TODO: Implement navigation/linking to evacuation routes map/info.
+                  // TODO: nav/linking to evacuation routes map/info.
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Evacuation routes - TBD')),
                   );
@@ -126,7 +122,7 @@ class SimulatedAlertScreen extends StatelessWidget {
                 title: const Text('Mark Yourself Safe / Request Assistance'),
                 trailing: const Icon(Icons.arrow_forward_ios),
                 onTap: () {
-                  // TODO: Implement "Mark Safe / Request Assistance" feature.
+                  // TODO: "Mark Safe / Request Assistance" feature.
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Mark Safe / Request Assistance - TBD')),
                   );
@@ -143,9 +139,7 @@ class SimulatedAlertScreen extends StatelessWidget {
           ],
         ),
       ),
-      // BottomNavigationBar is intentionally omitted as per wireframe interpretation
-      // for an urgent alert screen that takes full focus.
-      // If integrated into a tab, AlertsTab would manage its display.
-    );
-  }
+      // BottomNavigationBar omitted.
+      );
+    }
 }

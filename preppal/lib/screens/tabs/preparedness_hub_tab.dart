@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:preppal/screens/preparedness_hub/hcmc_risk_info_screen.dart';
 
-// Main screen for the Preparedness Hub section.
-// Provides navigation to HCMC risks, emergency kits, and plans.
+// Main preparedness hub screen.
 class PreparednessHubTab extends StatelessWidget {
   const PreparednessHubTab({super.key});
 
+  // Builds hub section card.
   Widget _buildHubSection(
     BuildContext context, {
     required IconData icon,
@@ -65,7 +65,7 @@ class PreparednessHubTab extends StatelessWidget {
             title: 'Emergency Kits',
             description: 'View, manage, and build your essential emergency kits.',
             onTap: () {
-              // TODO: Implement navigation to Emergency Kits screen.
+              // TODO: Implement nav to Emergency Kits screen.
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Emergency Kits screen not yet implemented.')),
               );
@@ -77,20 +77,20 @@ class PreparednessHubTab extends StatelessWidget {
             title: 'Preparedness Plans',
             description: 'Create and review your family and personal preparedness plans.',
             onTap: () {
-              // TODO: Implement navigation to Preparedness Plans screen.
+              // TODO: Implement nav to Preparedness Plans screen.
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Preparedness Plans screen not yet implemented.')),
               );
             },
           ),
-          // Skill Building section, as per dashboard wireframe.
+          // Skill Building section (dashboard wireframe).
            _buildHubSection(
             context,
             icon: Icons.school_outlined,
             title: 'Skill Building Resources',
             description: 'Access resources to learn essential preparedness skills.',
             onTap: () {
-              // TODO: Implement navigation to Skill Building Resources screen.
+              // TODO: Implement nav to Skill Building Resources screen.
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Skill Building Resources not yet implemented.')),
               );

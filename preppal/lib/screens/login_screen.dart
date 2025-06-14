@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-        // Navigation to HomeScreen is handled by AuthWrapper
+        // AuthWrapper handles navigation.
       } on FirebaseAuthException catch (e) {
         String message = 'An error occurred. Please try again.';
         if (e.code == 'user-not-found') {
@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Placeholder for registration - we'll implement this later
+  // register
   Future<void> _registerWithEmailAndPassword() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-        // Navigation to HomeScreen is handled by AuthWrapper upon successful registration and sign-in
+        // AuthWrapper handles navigation.
         if (mounted) {
            ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Account created successfully! You are now signed in.')),
@@ -186,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                 const SizedBox(height: 16.0),
                 TextButton(
-                  onPressed: _isLoading ? null : _registerWithEmailAndPassword, // Placeholder
+                  onPressed: _isLoading ? null : _registerWithEmailAndPassword, // register
                   child: Text(
                     'Create New Account',
                     style: TextStyle(color: Theme.of(context).hintColor),

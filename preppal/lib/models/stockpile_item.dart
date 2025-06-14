@@ -1,20 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StockpileItem {
-  final String? id; // Firestore document ID / SQLite primary key.
+  final String? id; // ID
   final String name;
   int quantity;
   final String category;
-  String? unit; // e.g., "kg", "L", "pcs".
+  String? unit; // e.g., "kg", "L"
   DateTime? expiryDate;
   String? notes;
-  String? reminderPreference; // Stores user's reminder choice (e.g., "1_week").
-  final DateTime addedDate; // Serves as createdAt
-  DateTime? updatedAt; // For sync purposes
+  String? reminderPreference; // reminder
+  final DateTime addedDate; // creation date
+  DateTime? updatedAt; // for sync
   final String userId;
-  double? unitVolumeLiters; // For water containers: Liters per bottle/can
-  double? totalDaysOfSupplyPerItem; // User-defined or calculated total days of supply
-  String? syncStatus; // e.g., 'synced', 'pending_sync'
+  double? unitVolumeLiters; // liters per item
+  double? totalDaysOfSupplyPerItem; // supply days
+  String? syncStatus; // sync status
 
   StockpileItem({
     this.id,
@@ -33,7 +33,7 @@ class StockpileItem {
     this.syncStatus,
   });
 
-  // Creates a StockpileItem instance from a Map (e.g., from Firestore or SQLite).
+  // create from map
   factory StockpileItem.fromMap(Map<String, dynamic> map, [String? idFromDocument]) {
     return StockpileItem(
       id: idFromDocument ?? map['id'] as String?,
@@ -65,10 +65,10 @@ class StockpileItem {
     );
   }
 
-  // Converts this StockpileItem instance to a Map for storage (Firestore/SQLite).
+  // convert to map
   Map<String, dynamic> toMap({bool forFirestore = true}) {
     return {
-      // id is typically not part of the map for Firestore auto-ID, but useful for SQLite
+      // ID not for Firestore auto-ID, but for SQLite.
       if (!forFirestore && id != null) 'id': id,
       'name': name,
       'quantity': quantity,
@@ -92,7 +92,7 @@ class StockpileItem {
     };
   }
 
-  // Creates a new StockpileItem instance with optional field overrides.
+  // create copy with overrides
   StockpileItem copyWith({
     String? id,
     String? name,

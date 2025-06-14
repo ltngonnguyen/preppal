@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../providers/profile_providers.dart'; // Your providers
-// Potentially import LoginScreen to navigate after logout, or handle via AuthWrapper
+import '../../providers/profile_providers.dart'; // Providers
+// Login screen import.
 // import '../login_screen.dart'; 
 
 class ProfileTab extends ConsumerWidget {
@@ -11,7 +11,7 @@ class ProfileTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfileAsync = ref.watch(userProfileProvider);
-    final auth = ref.watch(firebaseAuthProvider); // To call signOut
+    final auth = ref.watch(firebaseAuthProvider); // For signOut
 
     return Scaffold(
       body: Center(
@@ -20,9 +20,6 @@ class ProfileTab extends ConsumerWidget {
             print('[ProfileTab] userProfileAsync.when data: ${userProfile?.toJson()}');
             if (userProfile == null) {
               print('[ProfileTab] UserProfile is null.');
-              // This case might occur if the user is authenticated but profile doesn't exist yet
-              // Or if the stream hasn't emitted a non-null value after login.
-              // The userProfileProvider tries to return a default if snapshot !exists.
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -62,7 +59,7 @@ class ProfileTab extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 20),
-                  // Placeholder for Edit Profile button
+                  // Edit Profile button placeholder.
                   // ElevatedButton(
                   //   onPressed: () {
                   //     // Navigate to EditProfileScreen
