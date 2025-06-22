@@ -7,12 +7,40 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/stockpile_item.dart';
 import './firestore_service.dart'; // for sync stuff
+import '../utils/simple_logger.dart'; // Added
+
+// Define SyncStatus events
+abstract class SyncStatusEvent {
+  const SyncStatusEvent();
+}
+
+class SyncStarted extends SyncStatusEvent {
+  const SyncStarted();
+}
+
+class SyncCompleted extends SyncStatusEvent {
+  final DateTime timestamp;
+  const SyncCompleted(this.timestamp);
+}
+
+class SyncError extends SyncStatusEvent {
+  final String message;
+  const SyncError(this.message);
+}
+
+class SyncNoConnection extends SyncStatusEvent {
+  const SyncNoConnection();
+}
 
 class StockpileRepository {
   static final StockpileRepository instance = StockpileRepository._init();
   static Database? _database;
   // for updates
   final _updateNotifierController = StreamController<void>.broadcast();
+  // For sync status updates
+  final _syncStatusController = StreamController<SyncStatusEvent>.broadcast();
+  Stream<SyncStatusEvent> get syncStatusStream => _syncStatusController.stream;
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirestoreService _firestoreService = FirestoreService(); // use existing firestore stuff
@@ -102,8 +130,8 @@ class StockpileRepository {
       final db = await instance.database;
       const orderBy = 'addedDate DESC';
       
-      String whereClause = 'userId = ?';
-      List<dynamic> whereArgs = [_userId!];
+      String whereClause = 'userId = ? AND (syncStatus IS NULL OR syncStatus != ?)'; // Exclude pending_delete
+      List<dynamic> whereArgs = [_userId!, 'pending_delete']; // Add argument for pending_delete
   
       if (filter == "Food") {
         whereClause += ' AND category = ?';
@@ -144,7 +172,7 @@ class StockpileRepository {
   
       // listen for updates
       final StreamSubscription<void> subscription = _updateNotifierController.stream.listen((_) {
-        print("StockpileRepository: Update notification received, re-fetching for filter: $filter");
+        SimpleLogger.log("Update notification received, re-fetching for filter: $filter", tag: "StockpileRepo");
         readAllItems(filter: filter).then((items) {
           if (!controller.isClosed) {
             controller.add(items);
@@ -158,7 +186,7 @@ class StockpileRepository {
   
       // on stream cancel
       controller.onCancel = () {
-        print("StockpileRepository: Stream for filter '$filter' cancelled.");
+        SimpleLogger.log("Stream for filter '$filter' cancelled.", tag: "StockpileRepo");
         subscription.cancel();
         if (!controller.isClosed) {
           controller.close();
@@ -170,7 +198,7 @@ class StockpileRepository {
   
     // notify listeners
     Future<void> _notifyListeners() async {
-      print("StockpileRepository: Notifying listeners of data change.");
+      SimpleLogger.log("Notifying listeners of data change.", tag: "StockpileRepo");
       if (!_updateNotifierController.isClosed) {
         _updateNotifierController.add(null); // send void event
       }
@@ -196,104 +224,129 @@ class StockpileRepository {
       return result;
     }
   
-    // delete item
+    // delete item (marks for deletion, actual deletion happens after sync)
     Future<int> delete(String id) async {
       if (_userId == null) return 0;
       final db = await instance.database;
       
-      final itemToDelete = await readItem(id); // get item before delete
+      // Instead of deleting, mark as 'pending_delete'
+      final itemToMark = await readItem(id);
+      if (itemToMark == null) return 0; // Item not found
+
+      final updatedItem = itemToMark.copyWith(
+        syncStatus: 'pending_delete',
+        updatedAt: DateTime.now(),
+      );
       
-      final result = await db.delete(
+      final result = await db.update(
         'stockpile_items',
+        updatedItem.toMap(forFirestore: false), // Use the map for local DB
         where: 'id = ? AND userId = ?',
         whereArgs: [id, _userId],
       );
   
       if (result > 0) {
-        _notifyListeners(); // notify listeners
-        if (itemToDelete != null) {
-           _syncDeletionWithFirestore(itemToDelete);
-        }
+        _notifyListeners(); // Notify listeners so UI updates (item disappears)
+        syncWithFirestore(); // Attempt to sync the deletion immediately
       }
       return result;
     }
     
-    Future<void> _syncDeletionWithFirestore(StockpileItem itemToDelete) async {
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
-        print('No internet connection. Deletion for ${itemToDelete.id} will be synced later.');
-        // need to store pending deletions if offline
-        return;
-      }
-       if (_userId == null) return;
-  
-      try {
-        print('Deleting item from Firestore: ${itemToDelete.id}');
-        await _firestoreService.deleteStockpileItem(itemToDelete.id!);
-        print('Item ${itemToDelete.id} deleted from Firestore.');
-      } catch (e) {
-        print('Error deleting item ${itemToDelete.id} from Firestore: $e');
-        // retry or leave pending
-      }
-    }
-  
-    // TODO: sync logic here
+    // This method is now part of the main syncWithFirestore logic
+    // Future<void> _syncDeletionWithFirestore(StockpileItem itemToDelete) async { ... }
+    // It will be handled by iterating items with 'pending_delete' status.
+
+    // TODO: sync logic here (needs significant update for deletions)
   
     Future<void> syncWithFirestore() async {
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
-        print('No internet connection. Skipping sync.');
+      _syncStatusController.add(const SyncStarted()); // Notify sync started
+
+      final connectivityResultList = await Connectivity().checkConnectivity();
+      if (connectivityResultList.contains(ConnectivityResult.none) &&
+          !connectivityResultList.any((r) => r != ConnectivityResult.none && r != ConnectivityResult.bluetooth)) {
+        SimpleLogger.log('No internet connection. Skipping sync.', tag: "StockpileRepo.sync");
+        _syncStatusController.add(const SyncNoConnection());
         return;
       }
-  
+
       if (_userId == null) {
-        print('User not logged in. Skipping sync.');
+        SimpleLogger.log('User not logged in. Skipping sync.', tag: "StockpileRepo.sync");
+        _syncStatusController.add(const SyncError('User not logged in.')); // Or a specific event
         return;
       }
-  
-      print('Starting sync with Firestore...');
-  
-      // 1. get local pending items
+
+      SimpleLogger.log('Starting sync with Firestore...', tag: "StockpileRepo.sync");
+
+      // 1. Get local items: pending creations/updates and pending deletions
       final db = await instance.database;
-      final localPendingItems = (await db.query(
+      final localPendingCreationsUpdates = (await db.query(
         'stockpile_items',
         where: 'syncStatus = ? AND userId = ?',
         whereArgs: ['pending_sync', _userId],
       )).map((json) => StockpileItem.fromMap(json)).toList();
-  
-      // 2. push local changes to Firestore
-      for (final localItem in localPendingItems) {
+
+      final localPendingDeletions = (await db.query(
+        'stockpile_items',
+        where: 'syncStatus = ? AND userId = ?',
+        whereArgs: ['pending_delete', _userId],
+      )).map((json) => StockpileItem.fromMap(json)).toList();
+
+      // 2. Process pending deletions: Delete from Firestore, then from local DB
+      SimpleLogger.log('Processing ${localPendingDeletions.length} pending deletions...', tag: "StockpileRepo.sync");
+      for (final itemToDelete in localPendingDeletions) {
         try {
-          // check if item has ID
+          if (itemToDelete.id == null) {
+            SimpleLogger.log('Error: Local item marked for deletion has no ID: ${itemToDelete.name}', tag: "StockpileRepo.sync");
+            // If it has no ID, we can't delete it from Firestore.
+            // We should probably delete it locally to clean up.
+            await db.delete('stockpile_items', where: 'name = ? AND userId = ? AND syncStatus = ?', whereArgs: [itemToDelete.name, _userId, 'pending_delete']);
+            continue;
+          }
+          SimpleLogger.log('Attempting to delete item from Firestore: ${itemToDelete.id}', tag: "StockpileRepo.sync");
+          await _firestoreService.deleteStockpileItem(itemToDelete.id!);
+          SimpleLogger.log('Item ${itemToDelete.id} deleted from Firestore. Now deleting locally.', tag: "StockpileRepo.sync");
+          // If Firestore deletion is successful, delete from local DB permanently
+          await db.delete(
+            'stockpile_items',
+            where: 'id = ? AND userId = ?',
+            whereArgs: [itemToDelete.id, _userId],
+          );
+        } catch (e) {
+          SimpleLogger.log('Error deleting item ${itemToDelete.id} from Firestore: $e. It will remain pending_delete locally.', tag: "StockpileRepo.sync");
+          _syncStatusController.add(SyncError('Error deleting item ${itemToDelete.name} from cloud: $e'));
+          // If Firestore deletion fails, it remains 'pending_delete' locally for the next sync attempt.
+        }
+      }
+
+      // 3. Push local creations/updates to Firestore
+      SimpleLogger.log('Processing ${localPendingCreationsUpdates.length} pending creations/updates...', tag: "StockpileRepo.sync");
+      for (final localItem in localPendingCreationsUpdates) {
+        try {
           if (localItem.id == null) {
-              print('Error: Local item ${localItem.name} has no ID, cannot sync.');
+              SimpleLogger.log('Error: Local item ${localItem.name} has no ID, cannot sync create/update.', tag: "StockpileRepo.sync");
               continue;
           }
-  
-          // check for deletion, add/update based on existence
+          // Ensure updatedAt is current for the sync operation
+          final itemToSync = localItem.copyWith(updatedAt: DateTime.now());
+
+          // Check if item exists in Firestore to decide between set (create) or update
           DocumentSnapshot firestoreDoc;
           try {
             firestoreDoc = await _db.collection('users').doc(_userId).collection('stockpileItems').doc(localItem.id).get();
           } catch (e) {
-            // handle errors
-            print('Error fetching Firestore document ${localItem.id} for sync: $e');
-            continue; // skip item
+            SimpleLogger.log('Error fetching Firestore document ${localItem.id} for sync decision: $e', tag: "StockpileRepo.sync");
+            continue;
           }
-  
-          final itemToSync = localItem.copyWith(updatedAt: DateTime.now()); // fresh timestamp
-  
+
           if (firestoreDoc.exists) {
-            print('Updating item in Firestore: ${localItem.id}');
-            // update item
+            SimpleLogger.log('Updating item in Firestore: ${itemToSync.id}', tag: "StockpileRepo.sync");
             await _firestoreService.updateStockpileItem(itemToSync);
           } else {
-            print('Adding item to Firestore: ${localItem.id}');
-            // add item
-            await _db.collection('users').doc(_userId).collection('stockpileItems').doc(localItem.id).set(itemToSync.toMap(forFirestore: true));
+            SimpleLogger.log('Adding item to Firestore: ${itemToSync.id}', tag: "StockpileRepo.sync");
+            await _db.collection('users').doc(_userId).collection('stockpileItems').doc(itemToSync.id).set(itemToSync.toMap(forFirestore: true));
           }
-          // }
-  
-          // mark as synced locally
+
+          // Mark as synced locally
           await db.update(
             'stockpile_items',
             {'syncStatus': 'synced', 'updatedAt': itemToSync.updatedAt?.toIso8601String()},
@@ -301,40 +354,62 @@ class StockpileRepository {
             whereArgs: [localItem.id],
           );
         } catch (e) {
-          print('Error syncing item ${localItem.id} to Firestore: $e');
-          // retry or leave pending
+          SimpleLogger.log('Error syncing (create/update) item ${localItem.id} to Firestore: $e', tag: "StockpileRepo.sync");
+          _syncStatusController.add(SyncError('Error syncing item ${localItem.name}: $e'));
         }
       }
       
-      // sync pending deletions (placeholder)
-      // await _syncPendingDeletions(); // placeholder
-  
-  
-      // 3. fetch all items from Firestore
-      print('Fetching all items from Firestore for comparison...');
+      // 4. Fetch all items from Firestore (that are not marked for deletion locally)
+      SimpleLogger.log('Fetching all items from Firestore for comparison...', tag: "StockpileRepo.sync");
       List<StockpileItem> firestoreItems = [];
       try {
         final snapshot = await _db.collection('users').doc(_userId).collection('stockpileItems').get();
-        final firestoreItems = snapshot.docs.map((doc) => StockpileItem.fromMap(doc.data(), doc.id)).toList();
+        firestoreItems = snapshot.docs.map((doc) => StockpileItem.fromMap(doc.data(), doc.id)).toList();
       } catch (e) {
-        print('Error fetching items from Firestore: $e');
-        return; // stop sync if no data
+        SimpleLogger.log('Error fetching items from Firestore: $e', tag: "StockpileRepo.sync");
+        _syncStatusController.add(SyncError('Error fetching items from Firestore: $e'));
+        // We might still want to notify listeners even if Firestore fetch fails, as local changes might have occurred.
+        _notifyListeners();
+        return;
       }
       
-      // 4. compare/update local DB
+      // 5. Compare Firestore items with local DB and reconcile (pulling changes)
+      //    Local data takes precedence for items marked 'pending_sync' or 'pending_delete'.
+      //    'pending_sync' items were handled in step 3.
+      //    'pending_delete' items were handled in step 2.
+      SimpleLogger.log('Reconciling ${firestoreItems.length} Firestore items with local DB...', tag: "StockpileRepo.sync");
       for (final firestoreItem in firestoreItems) {
-        final localItem = await readItem(firestoreItem.id!);
-        if (localItem == null) {
-          // item in firestore but not local, add to local
-          print('Adding Firestore item to local DB: ${firestoreItem.id}');
+        if (firestoreItem.id == null) {
+            SimpleLogger.log('Firestore item has no ID, skipping: ${firestoreItem.name}', tag: "StockpileRepo.sync");
+            continue;
+        }
+        final localItem = await readItem(firestoreItem.id!); // readItem already filters out 'pending_delete' for UI, but we need to check its actual status here.
+        
+        // Explicitly get the item from DB without filtering 'pending_delete' for reconciliation
+        final rawLocalItemResult = await db.query('stockpile_items', where: 'id = ? AND userId = ?', whereArgs: [firestoreItem.id, _userId]);
+        StockpileItem? rawLocalItem = rawLocalItemResult.isNotEmpty ? StockpileItem.fromMap(rawLocalItemResult.first) : null;
+
+        if (rawLocalItem == null) {
+          // Item exists in Firestore but not locally (and wasn't pending delete). Add to local.
+          SimpleLogger.log('Adding Firestore item to local DB: ${firestoreItem.id}', tag: "StockpileRepo.sync");
           await db.insert('stockpile_items', firestoreItem.copyWith(syncStatus: 'synced').toMap(forFirestore: false));
-        } else {
-          // item in both. conflict: local data precedence if newer
-          if (localItem.syncStatus == 'synced' &&
-              firestoreItem.updatedAt != null &&
-              (localItem.updatedAt == null || firestoreItem.updatedAt!.isAfter(localItem.updatedAt!))) {
-            // firestore item newer, local synced
-            print('Updating local item from Firestore: ${firestoreItem.id}');
+        } else if (rawLocalItem.syncStatus == 'pending_delete') {
+          // This case should ideally be rare if step 2 worked, but as a safeguard:
+          // Item is marked for deletion locally. Firestore still has it. Attempt to delete from Firestore again.
+          SimpleLogger.log('Local item ${rawLocalItem.id} is pending_delete, but found in Firestore. Attempting Firestore delete again.', tag: "StockpileRepo.sync");
+          try {
+            await _firestoreService.deleteStockpileItem(rawLocalItem.id!);
+            SimpleLogger.log('Successfully deleted ${rawLocalItem.id} from Firestore during reconciliation. Deleting locally.', tag: "StockpileRepo.sync");
+            await db.delete('stockpile_items', where: 'id = ?', whereArgs: [rawLocalItem.id]);
+          } catch (e) {
+            SimpleLogger.log('Failed to delete ${rawLocalItem.id} from Firestore during reconciliation: $e', tag: "StockpileRepo.sync");
+          }
+        } else if (rawLocalItem.syncStatus == 'synced') {
+          // Item exists in both and local is 'synced'.
+          // If Firestore's version is newer, update local.
+          if (firestoreItem.updatedAt != null &&
+              (rawLocalItem.updatedAt == null || firestoreItem.updatedAt!.isAfter(rawLocalItem.updatedAt!))) {
+            SimpleLogger.log('Updating local item from Firestore (cloud is newer): ${firestoreItem.id}', tag: "StockpileRepo.sync");
             await db.update(
               'stockpile_items',
               firestoreItem.copyWith(syncStatus: 'synced').toMap(forFirestore: false),
@@ -342,12 +417,36 @@ class StockpileRepository {
               whereArgs: [firestoreItem.id],
             );
           }
-          // if local newer, should be pending
+        }
+        // If rawLocalItem.syncStatus == 'pending_sync', it means it was updated locally.
+        // Step 3 should have pushed this to Firestore. If Firestore's version is somehow newer
+        // despite this, it implies a complex conflict. For now, we assume local 'pending_sync'
+        // was authoritative and pushed. If Firestore has an even newer version after that push,
+        // that would be an edge case (e.g. another device synced in between).
+        // The current logic: local 'pending_sync' is pushed, then Firestore is pulled.
+        // If Firestore's `updatedAt` is newer than the `updatedAt` of the *just pushed* local item,
+        // it would be overwritten. This is generally okay if `updatedAt` is managed well.
+      }
+
+      // 6. Clean up: Remove any items from local DB that are no longer in Firestore
+      //    and are not 'pending_sync' or 'pending_delete' locally.
+      //    This handles cases where an item was deleted from Firestore by another client.
+      SimpleLogger.log('Performing final local DB cleanup based on Firestore state...', tag: "StockpileRepo.sync");
+      final allLocalItemsAfterSync = (await db.query('stockpile_items', where: 'userId = ?', whereArgs: [_userId])).map((json) => StockpileItem.fromMap(json)).toList();
+      for (final localItemToCheck in allLocalItemsAfterSync) {
+        if (localItemToCheck.id == null) continue;
+        // If local item is 'synced' but not found in the latest Firestore fetch, delete it locally.
+        if (localItemToCheck.syncStatus == 'synced' && !firestoreItems.any((fsItem) => fsItem.id == localItemToCheck.id)) {
+          SimpleLogger.log('Item ${localItemToCheck.id} is synced locally but not in Firestore. Deleting locally.', tag: "StockpileRepo.sync");
+          await db.delete('stockpile_items', where: 'id = ?', whereArgs: [localItemToCheck.id]);
         }
       }
-      print('Sync with Firestore completed.');
+
+      _notifyListeners(); // Notify UI of potential changes from sync
+      SimpleLogger.log('Sync with Firestore completed.', tag: "StockpileRepo.sync");
+      _syncStatusController.add(SyncCompleted(DateTime.now()));
     }
-  
+
     // initial data load
     Future<void> performInitialDataLoad() async {
       if (_userId == null) return;
@@ -357,9 +456,9 @@ class StockpileRepository {
       final connectivityResult = await Connectivity().checkConnectivity();
       final isOnline = connectivityResult != ConnectivityResult.none;
       bool dataChanged = false;
-  
+
       if (localItems.isEmpty && isOnline) {
-        print('Local DB is empty and online, performing initial sync from Firestore...');
+        SimpleLogger.log('Local DB is empty and online, performing initial sync from Firestore...', tag: "StockpileRepo.initLoad");
         // fetch from firestore, populate local
         try {
           final snapshot = await _db.collection('users').doc(_userId).collection('stockpileItems').get();
@@ -370,19 +469,25 @@ class StockpileRepository {
             for (final item in firestoreItems) {
               await db.insert('stockpile_items', item.copyWith(syncStatus: 'synced').toMap(forFirestore: false));
             }
-            print('Initial sync from Firestore completed. ${firestoreItems.length} items loaded.');
+            SimpleLogger.log('Initial sync from Firestore completed. ${firestoreItems.length} items loaded.', tag: "StockpileRepo.initLoad");
             dataChanged = true;
           }
         } catch (e) {
-          print('Error during initial sync from Firestore: $e');
+          SimpleLogger.log('Error during initial sync from Firestore: $e', tag: "StockpileRepo.initLoad");
         }
       } else if (localItems.isNotEmpty) {
-        print('Local DB has data. Will attempt regular sync if needed.');
-        await syncWithFirestore(); // regular sync if online
+        SimpleLogger.log('Local DB has data. Will attempt regular sync if needed.', tag: "StockpileRepo.initLoad");
+        // await syncWithFirestore(); // regular sync if online - syncWithFirestore will be called by performInitialDataLoad if needed
+        // Let performInitialDataLoad manage its own sync status reporting if it calls syncWithFirestore directly
+        // For now, syncWithFirestore is the main reporter.
         // sync might change data
         dataChanged = true;
+        // If syncWithFirestore is called within here, it will emit its own events.
+        // If we want performInitialDataLoad to have its own "initial sync" events, that's a separate addition.
+        // For now, we assume syncWithFirestore is the primary source of sync events.
+        await syncWithFirestore();
       } else {
-        print('Local DB is empty and offline. No initial sync possible.');
+        SimpleLogger.log('Local DB is empty and offline. No initial sync possible.', tag: "StockpileRepo.initLoad");
       }
       
       if (dataChanged) {
@@ -398,6 +503,9 @@ class StockpileRepository {
       _database = null;
       if (!_updateNotifierController.isClosed) {
         await _updateNotifierController.close();
+      }
+      if (!_syncStatusController.isClosed) {
+        await _syncStatusController.close();
       }
     }
 }

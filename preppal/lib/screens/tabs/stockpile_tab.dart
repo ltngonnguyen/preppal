@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // save stuff
 
 import '../../models/stockpile_item.dart';
 import '../../services/stockpile_repository.dart';
+import '../../utils/simple_logger.dart'; // Added
 import 'add_edit_stockpile_item_dialog.dart';
 import 'widgets/resource_progress_bar.dart'; // progress bar widget
 
@@ -90,7 +91,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
         }
       }
     }
-    print('[StockpileTab] Loaded celebrated milestones: Food: $_celebratedFoodMilestones, Water: $_celebratedWaterMilestones, Other: $_celebratedOtherMilestones');
     if(mounted) setState(() {}); // update ui
   }
 
@@ -112,7 +112,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     
     // save current celebrated
     await prefs.setStringList(key, milestonesSet.map((e) => e.toString()).toList());
-    print('[StockpileTab] Saved celebrated milestone $milestone for $resourceName to $key.');
   }
 
   @override
@@ -150,7 +149,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
   }
 
   Future<void> _processStockpileData(List<StockpileItem> items) async { // now async
-    print('[StockpileTab] _processStockpileData started. Item count: ${items.length}');
+    SimpleLogger.log('_processStockpileData started. Item count: ${items.length}', tag: 'StockpileTab');
 
     // save old values
     _previousFoodSupplyDays = _foodSupplyDays;
@@ -158,7 +157,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     _previousOtherAggregatedSupplies.clear();
     _previousOtherAggregatedSupplies.addAll(_otherAggregatedSupplies);
 
-    print('[StockpileTab] Stored previous supplies: Food=$_previousFoodSupplyDays, Water=$_previousWaterSupplyDays, Others=${_previousOtherAggregatedSupplies.entries.map((e) => '${e.key}:${e.value}').join(', ')}');
+    SimpleLogger.log('Stored previous supplies: Food=$_previousFoodSupplyDays, Water=$_previousWaterSupplyDays, Others=${_previousOtherAggregatedSupplies.entries.map((e) => '${e.key}:${e.value}').join(', ')}', tag: 'StockpileTab');
 
     double currentFoodDays = 0;
     double currentWaterLiters = 0;
@@ -208,13 +207,11 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     List<Map<String, dynamic>> allAchievedMilestones = [];
 
     // check milestones
-    print('[StockpileTab] Before Food milestone update: currentFoodDays=$currentFoodDays, _foodMilestoneTarget=$_foodMilestoneTarget, _previousFoodSupplyDays=$_previousFoodSupplyDays');
     final previousFoodDisplayMilestone = _foodMilestoneTarget; // old target for bar
     var foodUpdateResult = await _updateMilestoneTarget(currentFoodDays, _foodMilestoneTarget, "Food", previousFoodDisplayMilestone, _previousFoodSupplyDays); // needs await
     _foodMilestoneTarget = foodUpdateResult['nextMilestoneToAimFor'] as double;
     allAchievedMilestones.addAll(foodUpdateResult['achievedMilestones'] as List<Map<String, dynamic>>);
 
-    print('[StockpileTab] Before Water milestone update: currentWaterDays=$_waterSupplyDays, _waterMilestoneTarget=$_waterMilestoneTarget, _previousWaterSupplyDays=$_previousWaterSupplyDays');
     final previousWaterDisplayMilestone = _waterMilestoneTarget;
     var waterUpdateResult = await _updateMilestoneTarget(_waterSupplyDays, _waterMilestoneTarget, "Water", previousWaterDisplayMilestone, _previousWaterSupplyDays); // needs await
     _waterMilestoneTarget = waterUpdateResult['nextMilestoneToAimFor'] as double;
@@ -228,7 +225,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
         final supply = _otherAggregatedSupplies[category]!; // must exist
         final previousMilestoneForCategory = _otherMilestoneTargets[category] ?? _milestones.first;
         final oldSupplyForCategory = _previousOtherAggregatedSupplies[category] ?? 0.0;
-        print('[StockpileTab] Before Other ($category) milestone update: newSupply=$supply, target=$previousMilestoneForCategory, oldSupplyForCategory=$oldSupplyForCategory');
         
         var otherUpdateResult = await _updateMilestoneTarget(supply, previousMilestoneForCategory, category, previousMilestoneForCategory, oldSupplyForCategory); // needs await
         _otherMilestoneTargets[category] = otherUpdateResult['nextMilestoneToAimFor'] as double;
@@ -245,7 +241,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     }
 
     categoriesToRemove.forEach((key) {
-        print('[StockpileTab] Removing category $key from progress bar tracking (no more items with supply days).');
+        SimpleLogger.log('Removing category $key from progress bar tracking (no more items with supply days).', tag: 'StockpileTab');
         _otherAggregatedSupplies.remove(key);
         _otherMilestoneTargets.remove(key);
         // keep for next comparison
@@ -254,9 +250,7 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
 
     if (mounted) {
       setState(() {
-        print('[StockpileTab] _processStockpileData finished. Triggering setState. Will play ${allAchievedMilestones.length} celebrations sequentially.');
         // (debug log removed)
-        // print('[StockpileTab DEBUG] Achieved Milestones before play: $allAchievedMilestones');
       });
       if (allAchievedMilestones.isNotEmpty) {
         // microtask for dialogs after build
@@ -281,7 +275,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
   // returns next target and achieved list
   // now async, returns Future
   Future<Map<String, dynamic>> _updateMilestoneTarget(double currentSupply, double currentMilestoneTarget, String resourceName, double previousMilestoneTarget, double oldSupply) async {
-    print('[StockpileTab._updateMilestoneTarget for $resourceName] Start: currentSupply=$currentSupply, currentTarget=$currentMilestoneTarget, previousTarget=$previousMilestoneTarget, oldSupply=$oldSupply');
     
     List<Map<String, dynamic>> achievedThisUpdate = [];
     double nextMilestoneToAimFor = currentMilestoneTarget;
@@ -297,7 +290,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     if (currentSupply >= _milestones.last) { // if supply is >= largest milestone
         nextMilestoneToAimFor = _milestones.last;
     }
-    print('[StockpileTab._updateMilestoneTarget for $resourceName] Initial nextMilestoneToAimFor calculated as: $nextMilestoneToAimFor');
 
 
     // check for achieved milestones
@@ -315,11 +307,9 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
         }
 
         // (debug log removed)
-        // print('[StockpileTab DEBUG _updateMilestoneTarget for $resourceName] Checking milestone: $milestoneValue. currentSupply: $currentSupply, oldSupply: $oldSupply, justCrossed: $justCrossedThisMilestone, alreadyCelebrated: $alreadyCelebrated');
 
         if (justCrossedThisMilestone && !alreadyCelebrated) {
             if (milestoneValue > 0 ) { // no 0 day celebrations
-                print('[StockpileTab._updateMilestoneTarget for $resourceName] Milestone $milestoneValue DETECTED as newly achieved (not celebrated yet)! currentSupply=$currentSupply, oldSupply=$oldSupply.');
                 achievedThisUpdate.add({'resourceName': resourceName, 'milestone': milestoneValue});
             }
         } else if (currentSupply < milestoneValue && alreadyCelebrated) {
@@ -333,20 +323,16 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
                 removedSuccessfully = _celebratedOtherMilestones[resourceName]!.remove(milestoneValue);
                 if (removedSuccessfully && _celebratedOtherMilestones[resourceName]!.isEmpty) {
                     _celebratedOtherMilestones.remove(resourceName); // cleanup map
-                    print('[StockpileTab._updateMilestoneTarget for $resourceName] Also removed empty set from _celebratedOtherMilestones.');
                 }
             }
 
             if (removedSuccessfully) {
-                print('[StockpileTab._updateMilestoneTarget for $resourceName] Milestone $milestoneValue UN-CELEBRATED (supply dropped below $milestoneValue). Persisting change.');
                 await _saveCelebratedMilestones(resourceName, milestoneValue); // save removal
             }
         } else if (justCrossedThisMilestone && alreadyCelebrated) {
-            print('[StockpileTab._updateMilestoneTarget for $resourceName] Milestone $milestoneValue was crossed (currentSupply=$currentSupply, oldSupply=$oldSupply), but already celebrated.');
         } else {
             // (debug log removed)
             if (!justCrossedThisMilestone && !alreadyCelebrated) { // log missed new celebration
-                 print('[StockpileTab _updateMilestoneTarget for $resourceName] Milestone $milestoneValue NOT added for celebration. justCrossed: $justCrossedThisMilestone (current: $currentSupply, old: $oldSupply), alreadyCelebrated: $alreadyCelebrated.');
             }
         }
     }
@@ -354,7 +340,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     // if items removed, adjust target
     if (currentSupply < currentMilestoneTarget) { // for item removal
         nextMilestoneToAimFor = _milestones.firstWhere((m) => currentSupply < m, orElse: () => _milestones.last);
-         print('[StockpileTab._updateMilestoneTarget for $resourceName] Supply $currentSupply is less than original target $currentMilestoneTarget (items removed?). Adjusted nextMilestoneToAimFor to $nextMilestoneToAimFor');
     }
 
 
@@ -364,7 +349,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
         if (currentIndex != -1 && currentSupply >= _milestones[currentIndex]) { // if supply >= this milestone
              if (currentIndex + 1 < _milestones.length) {
                 nextMilestoneToAimFor = _milestones[currentIndex + 1];
-                print('[StockpileTab._updateMilestoneTarget for $resourceName] Supply $currentSupply meets/exceeds current aim $nextMilestoneToAimFor (not last). Advanced nextMilestoneToAimFor to ${_milestones[currentIndex+1]}');
              }
         }
     }
@@ -372,17 +356,14 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
     // if supply >= highest, target is highest
     if (currentSupply >= _milestones.last) {
         nextMilestoneToAimFor = _milestones.last; // target last milestone
-        print('[StockpileTab._updateMilestoneTarget for $resourceName] Supply $currentSupply meets/exceeds last milestone. Set nextMilestoneToAimFor to ${_milestones.last}');
     }
 
 
-    print('[StockpileTab._updateMilestoneTarget for $resourceName] End. Returning nextMilestoneToAimFor: $nextMilestoneToAimFor, Achieved: ${achievedThisUpdate.length}');
     return {'nextMilestoneToAimFor': nextMilestoneToAimFor, 'achievedMilestones': achievedThisUpdate};
   }
 
   Future<void> _triggerMilestoneCelebration(String resourceName, double achievedMilestone) async {
     if (!mounted) return;
-    print('[StockpileTab._triggerMilestoneCelebration] Celebrating $resourceName - ${achievedMilestone} days.');
     _confettiController.play();
     // sound per dialog for now
     _audioPlayer.play(AssetSource('sounds/milestone_achieved.wav'));
@@ -410,7 +391,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
 
   Future<void> _playCelebrationsSequentially(List<Map<String, dynamic>> achievements) async {
     if (!mounted) return;
-    print('[StockpileTab._playCelebrationsSequentially] Starting to play ${achievements.length} celebrations.');
     for (var achievement in achievements) {
       if (!mounted) break; // stop if disposed
       final resourceName = achievement['resourceName'] as String;
@@ -423,11 +403,9 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
       else if (_celebratedOtherMilestones.containsKey(resourceName)) alreadyMarkedAsCelebrated = _celebratedOtherMilestones[resourceName]!.contains(milestone);
 
       if (alreadyMarkedAsCelebrated) {
-        print('[StockpileTab._playCelebrationsSequentially] Skipping $resourceName - $milestone, already marked celebrated before dialog.');
         continue;
       }
 
-      print('[StockpileTab._playCelebrationsSequentially] Now celebrating $resourceName - $milestone days.');
       await _triggerMilestoneCelebration(resourceName, milestone);
       
       // mark after dialog
@@ -435,13 +413,10 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
         bool newlyMarked = false;
         if (resourceName == "Food") {
           newlyMarked = _celebratedFoodMilestones.add(milestone);
-          if(newlyMarked) print('[StockpileTab._playCelebrationsSequentially] Marked Food milestone $milestone as celebrated.');
         } else if (resourceName == "Water") {
           newlyMarked = _celebratedWaterMilestones.add(milestone);
-          if(newlyMarked) print('[StockpileTab._playCelebrationsSequentially] Marked Water milestone $milestone as celebrated.');
         } else {
           newlyMarked = _celebratedOtherMilestones.putIfAbsent(resourceName, () => {}).add(milestone);
-          if(newlyMarked) print('[StockpileTab._playCelebrationsSequentially] Marked Other ($resourceName) milestone $milestone as celebrated.');
         }
         if (newlyMarked) {
           await _saveCelebratedMilestones(resourceName, milestone);
@@ -450,7 +425,6 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
       // optional delay
       // await Future.delayed(const Duration(milliseconds: 500));
     }
-    print('[StockpileTab._playCelebrationsSequentially] Finished playing all celebrations.');
   }
 
   void _showAddItemDialog({StockpileItem? item}) {
@@ -476,31 +450,49 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
           ),
         ],
       ),
-      body: Stack( // for confetti
-        alignment: Alignment.topCenter,
-        children: [
-          Column(
-            children: [
-              _buildFilterChips(),
-              _buildSummarySection(), // summary section
-              const Divider(),
-              _buildStockpileList(), // list view, needs Expanded
-            ],
-          ),
-          ConfettiWidget( // confetti
-            confettiController: _confettiController,
-            blastDirectionality: BlastDirectionality.explosive,
-            shouldLoop: false,
-            colors: const [
-              Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple
-            ],
-            gravity: 0.2,
-            emissionFrequency: 0.05,
-            numberOfParticles: 20,
-            maxBlastForce: 20,
-            minBlastForce: 5,
-          ),
-        ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          try {
+            await StockpileRepository.instance.syncWithFirestore();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Stockpile synced with server.'), backgroundColor: Colors.green),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red),
+              );
+            }
+          }
+        },
+        child: Stack( // for confetti
+          alignment: Alignment.topCenter,
+          children: [
+            ListView( // Changed Column to ListView to enable pull-to-refresh on the whole content
+              children: [
+                _buildFilterChips(),
+                _buildSummarySection(), // summary section
+                const Divider(),
+                _buildStockpileList(), // list view, needs Expanded (now sized by ListView)
+              ],
+            ),
+            ConfettiWidget( // confetti
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              colors: const [
+                Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple
+              ],
+              gravity: 0.2,
+              emissionFrequency: 0.05,
+              numberOfParticles: 20,
+              maxBlastForce: 20,
+              minBlastForce: 5,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -620,51 +612,55 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
   }
 
   Widget _buildStockpileList() {
-    return Expanded(
-      child: StreamBuilder<List<StockpileItem>>(
-        stream: _stockpileRepository.getStockpileItemsStream(filter: _currentFilter),
-        builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: SingleChildScrollView( // prevent overflow
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.sentiment_dissatisfied_outlined, size: 80, color: Colors.grey),
-                            const SizedBox(height: 20),
-                            Text(
-                              'Your stockpile is empty.',
-                              style: Theme.of(context).textTheme.titleLarge,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 10),
-                            const Text(
-                              'Tap the "+" icon in the top bar to add your first item.',
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+    // Removed Expanded widget here
+    return StreamBuilder<List<StockpileItem>>(
+      stream: _stockpileRepository.getStockpileItemsStream(filter: _currentFilter),
+      builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: SingleChildScrollView( // prevent overflow
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.sentiment_dissatisfied_outlined, size: 80, color: Colors.grey),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Your stockpile is empty.',
+                            style: Theme.of(context).textTheme.titleLarge,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Tap the "+" icon in the top bar to add your first item.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                }
+                  ),
+                );
+              }
 
-                final allItems = snapshot.data!;
-                // TODO: filter logic
-                final items = allItems; // use all for now
+              final allItems = snapshot.data!;
+              // TODO: filter logic
+              final items = allItems; // use all for now
 
-                return ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
+              // This ListView is now nested inside the main ListView of the Stack
+              // It needs shrinkWrap and NeverScrollableScrollPhysics
+              return ListView.builder(
+                shrinkWrap: true, // Added
+                physics: const NeverScrollableScrollPhysics(), // Added
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
                     bool isExpiringSoon = item.expiryDate != null && item.expiryDate!.isBefore(DateTime.now().add(const Duration(days: 30)));
                     bool isExpired = item.expiryDate != null && item.expiryDate!.isBefore(DateTime.now());
 
@@ -678,6 +674,24 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
+                                // Sync Status Icon
+                                if (item.syncStatus != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: Icon(
+                                      item.syncStatus == 'synced'
+                                          ? Icons.cloud_done_outlined
+                                          : item.syncStatus == 'pending_sync'
+                                              ? Icons.cloud_upload_outlined
+                                              : Icons.cloud_off_outlined, // Error or unknown
+                                      size: 20.0,
+                                      color: item.syncStatus == 'synced'
+                                          ? Colors.green
+                                          : item.syncStatus == 'pending_sync'
+                                              ? Colors.orangeAccent
+                                              : Colors.redAccent,
+                                    ),
+                                  ),
                                 Expanded(
                                   child: Text(
                                     '${item.name} (${item.quantity} ${item.unit ?? ''})'.trim(),
@@ -764,10 +778,9 @@ class _StockpileTabState extends State<StockpileTab> with TickerProviderStateMix
                   },
                 );
               },
-            ),
-          ); // end Expanded for _buildStockpileList
-  } // end _buildStockpileList
+            ); // end StreamBuilder for _buildStockpileList
+} // end _buildStockpileList
 
-  // FAB removed, add item in appbar
+// FAB removed, add item in appbar
 
 } // end _StockpileTabState

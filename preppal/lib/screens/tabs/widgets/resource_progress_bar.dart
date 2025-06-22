@@ -35,7 +35,6 @@ class _ResourceProgressBarState extends State<ResourceProgressBar>
     );
 
     final initialProgress = _calculateProgress();
-    print('[ResourceProgressBar] initState: resourceName=${widget.resourceName}, currentSupply=${widget.currentSupply}, milestoneTarget=${widget.milestoneTarget}, initialProgress=$initialProgress');
 
     _progressAnimation = Tween<double>(
       begin: 0.0,
@@ -54,7 +53,6 @@ class _ResourceProgressBarState extends State<ResourceProgressBar>
     if (widget.currentSupply != oldWidget.currentSupply ||
         widget.milestoneTarget != oldWidget.milestoneTarget) {
       final newProgress = _calculateProgress();
-      print('[ResourceProgressBar] didUpdateWidget: resourceName=${widget.resourceName}, newCurrentSupply=${widget.currentSupply}, newMilestoneTarget=${widget.milestoneTarget}, newProgress=$newProgress, oldProgress=${_progressAnimation.value}');
       if (_animationController.isAnimating) {
         _animationController.stop();
       }

@@ -6,6 +6,8 @@ import 'package:preppal/providers/profile_providers.dart';
 import 'package:preppal/screens/profile/edit_profile_screen.dart';
 import 'package:preppal/models/user_profile.dart'; // for UserProfile
 import 'package:preppal/services/profile_service.dart'; // for ProfileService
+import 'package:preppal/services/stockpile_repository.dart'; // Added
+import 'package:preppal/screens/debug/log_viewer_screen.dart'; // Added
 import 'dart:io'; // for File
 
 class SettingsScreen extends ConsumerStatefulWidget { // consumer stateful
@@ -128,7 +130,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> { // state
                   userPreferencesNotifier.updateOfflineSyncEnabled(value);
                 },
               ),
+              // Developer Options
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Developer Options',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              ListTile(
+                title: const Text('View App Logs'),
+                trailing: const Icon(Icons.arrow_forward_ios),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LogViewerScreen()),
+                  );
+                },
+              ),
               const Divider(),
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: ElevatedButton(
