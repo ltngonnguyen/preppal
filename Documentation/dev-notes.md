@@ -117,3 +117,61 @@ HCMC-Specific Alert Simulation with Interactive Guidance: Developing the UI for 
 Begin coding the chosen feature prototype.
 Start drafting the "Introduction" and "Feature Prototype" chapters for the Week 10 preliminary report.
 Revise the "Literature Review" and "Design" chapters based on peer review feedback (once received) and my own evolving understanding
+
+
+## Week 9
+
+Achieved:
+Completed all high-fidelity mockups in Figma.
+Created a clickable prototype for key user flows.
+Chose "Offline Stockpile Management" as the core technical feature for the prototype.
+Began coding the stockpile feature, focusing on local data persistence.
+Received and reviewed peer feedback on the "Design" document.
+
+Planned:
+Complete the core logic for the offline stockpile management prototype.
+Integrate the prototype with the existing UI shells.
+Revise the "Design" chapter based on peer feedback.
+Continue drafting the "Introduction" and "Feature Prototype" chapters for the preliminary report.
+
+## Week 10
+
+Achieved:
+Finished and submitted the technically challenging feature prototype (Offline Stockpile Management).
+Submitted the preliminary report draft including the "Introduction" and "Feature Prototype" chapters.
+A slight delay occurred as the state management for offline sync was more complex than anticipated.
+Revised the "Literature Review" and "Design" documents based on feedback.
+
+Planned:
+Begin implementing the HCMC-specific alert simulation feature.
+Start developing the user authentication flow with Supabase.
+Refine the overall UI and navigation based on the prototype experience.
+Expand the Supabase database schema to support alerts and user profiles.
+
+## Week 11
+
+Achieved:
+Set up the testing framework for the application.
+Developed the first iteration of the project, including core features like authentication, alert simulation UI, and the initial database schema.
+Began writing the report chapter for the first iteration.
+Resolved challenges in managing the complex state for multi-stage alerts.
+
+Planned:
+Finalize the write-up for the first iteration.
+Begin implementing the "Preparedness Hub" to display HCMC risk information.
+Start writing the main "Implementation" chapter for the final report.
+Refactor the initial codebase to improve structure and scalability based on first iteration learnings.
+
+## Week 12
+
+Achieved:
+Completed and documented the first iteration of the project.
+The "Preparedness Hub" is now implemented with static HCMC-specific risk data.
+The codebase has been significantly refactored for better organization.
+Made good progress on the "Implementation" chapter of the report.
+
+Planned:
+Implement the gamified checklist feature for building emergency kits.
+Begin connecting the offline stockpile feature to Supabase for online synchronization.
+Continue documenting the implementation process in the final report.
+Start planning the methodology for user testing and feedback sessions for the second iteration.
